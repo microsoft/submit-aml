@@ -14,11 +14,11 @@ submit-aml \
     --resource-group "my-resource-group" \
     --workspace "my-workspace" \
     --compute-target "my-gpu-cluster" \
-    --script run.py
+    --script run.py \
+        arg1 \
+        arg2
 ```
 
 ## Configuration
 
 Azure ML defaults can be set via a config file at `~/.config/submit-aml/config.toml` or environment variables prefixed `SUBMIT_AML_`. See the [documentation](https://microsoft.github.io/submit-aml) for details.
-
-📖 [Full documentation](https://microsoft.github.io/submit-aml)
