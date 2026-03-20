@@ -1,0 +1,30 @@
+[tools]
+uv = "latest"
+
+[tasks.check]
+description = "Run all checks (tests, types, lint, format)"
+run = "uv run tox"
+
+[tasks.test]
+description = "Run tests"
+run = "uv run tox -e pytest"
+
+[tasks.types]
+description = "Run type checker"
+run = "uv run tox -e types"
+
+[tasks.lint]
+description = "Run linter"
+run = "uv run tox -e lint"
+
+[tasks.format]
+description = "Check formatting"
+run = "uv run tox -e format"
+
+[tasks.docs-serve]
+description = "Serve documentation locally"
+run = "uv run --group docs zensical serve"
+
+[tasks.docs-build]
+description = "Build documentation"
+run = "uv run --group docs zensical build"

@@ -1,0 +1,81 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  FORCE_COLOR: 1
+
+jobs:
+  build:
+    name: Build docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Build docs
+        run: uv run --group docs zensical build
+
+      - name: Upload artifact
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  preview:
+    name: Preview (PR)
+    if: github.event_name == 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Build docs
+        run: uv run --group docs zensical build
+
+      - name: Deploy preview with Smokeshow
+        run: |
+          uvx smokeshow upload site/ 2>&1 | tee smokeshow-output.txt
+          url=$(grep -oP 'https://\S+' smokeshow-output.txt | head -1)
+          echo "SMOKESHOW_URL=$url" >> "$GITHUB_ENV"
+        env:
+          SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Docs preview
+          SMOKESHOW_GITHUB_CONTEXT: docs-preview
+          SMOKESHOW_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SMOKESHOW_GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+      - name: Comment on PR
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            📖 **Docs preview**: ${{ env.SMOKESHOW_URL }}
+          comment-tag: docs-preview

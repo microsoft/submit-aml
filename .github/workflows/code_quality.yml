@@ -1,0 +1,27 @@
+name: Code quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: 1
+
+jobs:
+  check:
+    name: tox env ${{ matrix.tox_env }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tox_env: [format, lint, types]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+      - run: uvx --with tox-uv -- tox -e ${{ matrix.tox_env }}

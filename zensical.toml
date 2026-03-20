@@ -1,0 +1,83 @@
+[project]
+site_name = "submit-aml"
+site_url = "https://microsoft.github.io/submit-aml"
+site_description = "CLI tool to submit jobs to Azure Machine Learning"
+site_author = "Microsoft Corporation"
+copyright = "&copy; Microsoft Corporation"
+docs_dir = "docs"
+
+nav = [
+    {"Home" = "index.md"},
+    {"Configuration" = "configuration.md"},
+    {"CLI Reference" = "cli-reference.md"},
+    {"Python API" = "python-api.md"},
+    {"Examples" = "examples.md"},
+]
+
+extra_css = ["stylesheets/extra.css"]
+
+[project.theme]
+variant = "modern"
+features = [
+    "navigation.instant",
+    "navigation.tracking",
+    "navigation.path",
+    "navigation.indexes",
+    "content.code.copy",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+inherited_members = true
+show_source = false
+show_bases = true
+show_root_heading = true
+show_root_full_path = false
+members_order = "source"
+separate_signature = true
+merge_init_into_class = true
+
+[project.markdown_extensions.admonition]
+
+[project.markdown_extensions.mkdocs-typer]
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
+[project.extra]
+repo_url = "https://github.com/microsoft/submit-aml"
+repo_name = "microsoft/submit-aml"

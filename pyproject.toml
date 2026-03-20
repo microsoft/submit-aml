@@ -1,0 +1,114 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "submit-aml"
+version = "0.1.0"
+description = "CLI tool to submit jobs to Azure Machine Learning"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Microsoft Research Health Futures", email = "innereyedev@microsoft.com" },
+]
+maintainers = [
+    { name = "Microsoft Research Health Futures", email = "innereyedev@microsoft.com" },
+]
+keywords = ["azure", "machine-learning", "azureml", "cli", "job-submission"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "azure-ai-ml",
+    "azure-identity",
+    "loguru",
+    "rich",
+    "tomli>=1.1.0; python_version < '3.11'",
+    "typer>=0.16.0",
+]
+
+[project.scripts]
+submit-aml = "submit_aml.__main__:app"
+
+[project.urls]
+Homepage = "https://github.com/microsoft/submit-aml"
+Documentation = "https://microsoft.github.io/submit-aml"
+Repository = "https://github.com/microsoft/submit-aml"
+Issues = "https://github.com/microsoft/submit-aml/issues"
+
+[dependency-groups]
+dev = [
+    "tox",
+    "tox-uv",
+]
+test = [
+    "pytest>=8",
+    "pytest-sugar>=1.0",
+]
+quality = [
+    "ruff",
+]
+types = [
+    "ty",
+]
+maintain = [
+    "bump-my-version",
+    "prek",
+]
+docs = [
+    "zensical",
+    "mkdocs-typer>=0.0.3",
+    "mkdocstrings-python>=2.0",
+]
+
+[tool.bumpversion]
+current_version = "0.1.0"
+commit = true
+tag = true
+
+[[tool.bumpversion.files]]
+filename = "src/submit_aml/__init__.py"
+search = "__version__ = '{current_version}'"
+replace = "__version__ = '{new_version}'"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
+
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-config", "--strict-markers"]
+minversion = "8"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.uv]
+constraint-dependencies = [
+    "click<8.2", # https://github.com/fastapi/typer/discussions/1215
+]
+

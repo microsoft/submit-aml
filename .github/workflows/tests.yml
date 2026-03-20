@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: 1
+
+jobs:
+  pytest:
+    name: Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+      fail-fast: false
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+      - run: uv tool install --python ${{ matrix.python }} --with tox-uv tox
+      - run: tox run -v --notest --skip-missing-interpreters false
+      - run: tox -e pytest
