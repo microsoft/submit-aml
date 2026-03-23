@@ -99,8 +99,10 @@ def setup(
         num_nodes: Number of nodes to use for the job.
 
     Returns:
-        source_dir: Resolved source directory. Current working directory if not provided.
-        project_dir: Resolved project directory. Current working directory if not provided.
+        source_dir: Resolved source directory.
+            Current working directory if not provided.
+        project_dir: Resolved project directory.
+            Current working directory if not provided.
         script_path: Path to the script relative to the source directory.
         ml_client: Azure Machine Learning client.
         description: Description of the job. Command line arguments if not provided.
@@ -327,8 +329,10 @@ def submit_to_aml(
             )
         if dependency_groups is not None or optional_dependencies is not None:
             raise ValueError(
-                "Cannot use --conda-env-file together with --dependency-group or --extra. "
-                "Conda environments manage their own dependencies."
+                "Cannot use --conda-env-file together with"
+                " --dependency-group or --extra. "
+                "Conda environments manage their own"
+                " dependencies."
             )
     (
         source_dir,

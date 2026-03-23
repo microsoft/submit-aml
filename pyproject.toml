@@ -95,9 +95,6 @@ addopts = ["-ra", "--strict-config", "--strict-markers"]
 minversion = "8"
 testpaths = ["tests"]
 
-[tool.ruff]
-line-length = 100
-
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 

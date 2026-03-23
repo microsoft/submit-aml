@@ -222,7 +222,8 @@ def _check_has_patch(python_version_path: Path) -> None:
             f'The .python-version file specified Python version "{python_version}",'
             " but should contain a full Python version, including"
             " the patch number (e.g., 3.11.10)."
-            " Run `uv python pin <version_with_patch>` in the project directory to pin it."
+            " Run `uv python pin <version_with_patch>`"
+            " in the project directory to pin it."
         )
         logger.warning(msg)
 
@@ -331,7 +332,10 @@ def infer_environment(
             )
             return environment_instance.name
         if ml_client is None:
-            msg = "An instance of MLClient must be provided to register the conda environment."
+            msg = (
+                "An instance of MLClient must be provided"
+                " to register the conda environment."
+            )
             raise ValueError(msg)
         registered_environment = _register_environment(ml_client, environment_instance)
         assert registered_environment.name is not None
@@ -367,8 +371,11 @@ def infer_environment(
         environment = Environment(image=base_docker_image)
     else:
         raise ValueError(
-            "Either `build_docker_context` must be True, or `aml_environment` must be"
-            " provided, or `conda_env_file` must be provided, or `base_docker_image` must be provided."
+            "Either `build_docker_context` must be True,"
+            " or `aml_environment` must be"
+            " provided, or `conda_env_file` must be"
+            " provided, or `base_docker_image`"
+            " must be provided."
         )
     return environment
 

@@ -262,4 +262,4 @@ def generate_template_config() -> str:
         [tensorboard]
         # tensorboard_dir = "logs/tensorboard"
         # enable_tensorboard = true
-    """)
+    """)  # noqa: E501
