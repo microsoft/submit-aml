@@ -178,7 +178,7 @@ def _parse_value_string(value_str: str) -> int | float | str:
 
 
 def _parse_values_string(values_str: str) -> list[int | float | str]:
-    """Parse a comma-separated string of values into a list of integers, floats, or strings."""  # noqa: E501
+    """Parse a comma-separated string of values into a list."""
     values = []
     for value_str in values_str.split(","):
         value = _parse_value_string(value_str.strip())
