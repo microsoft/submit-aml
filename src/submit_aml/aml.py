@@ -200,7 +200,7 @@ def _submit(
     wait_for_completion: bool = False,
 ) -> Job | None:
     if dry_run:
-        msg = "Dry run mode is enabled. The job won't be submitted"
+        msg = "Dry run mode is enabled. The job won't be submitted."
         logger.warning(msg)
         return None
 
@@ -208,7 +208,12 @@ def _submit(
     end_msg = "Job submitted successfully"
     with report_time(start_msg, end_msg):
         returned_job = ml_client.create_or_update(command_job)
+    
     logger.info(f'Run ID: "{returned_job.name}"')
+    
+    if returned_job.display_name is not None:
+        logger.info(f'Display name: "{returned_job.display_name}"')
+    
     logger.info("Studio URL:")
     assert returned_job.services is not None
     url = returned_job.services["Studio"].endpoint
