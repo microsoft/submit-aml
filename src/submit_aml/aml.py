@@ -109,9 +109,7 @@ def setup(
     """
     if source_dir is None:
         source_dir = get_cwd()
-        msg = (
-            f"Source directory not provided. Using the current directory: {source_dir}"
-        )
+        msg = f"Source directory not provided. Using the current directory: {source_dir}"
     else:
         source_dir = source_dir.resolve()
         msg = f"Source directory: {source_dir}"
@@ -131,10 +129,7 @@ def setup(
 
     if project_dir is None:
         project_dir = get_cwd()
-        msg = (
-            "Project directory not provided."
-            f" Using the current directory: {project_dir}"
-        )
+        msg = f"Project directory not provided. Using the current directory: {project_dir}"
     else:  # assume we're using `uv run` inside the prefix for now
         project_dir = project_dir.resolve()
         msg = f"Project directory: {project_dir}"
@@ -155,8 +150,7 @@ def setup(
             process_count_per_instance=num_gpus,
         )
         logger.info(
-            f'Using "PyTorch" distribution with {num_nodes} nodes and '
-            f"{num_gpus} GPUs per node."
+            f'Using "PyTorch" distribution with {num_nodes} nodes and {num_gpus} GPUs per node.'
         )
 
     experiment_name = _sanitize_experiment_name(experiment_name)
@@ -270,9 +264,7 @@ def submit_to_aml(
     suppress_azure_warnings()
 
     # Resolve missing subscription_id / resource_group from workspace profiles
-    if workspace_name is not None and (
-        subscription_id is None or resource_group is None
-    ):
+    if workspace_name is not None and (subscription_id is None or resource_group is None):
         ws_config = resolve_workspace_config(workspace_name)
         if ws_config:
             if subscription_id is None and "subscription_id" in ws_config:
@@ -378,8 +370,7 @@ def submit_to_aml(
         services = {}
     if debug:
         logger.warning(
-            "Debugging mode is enabled. The script won't start until the debugger is"
-            " attached"
+            "Debugging mode is enabled. The script won't start until the debugger is attached"
         )
         command_prefix, executable = build_debug_command(command_prefix, executable)
         add_service_for_debugging(services)

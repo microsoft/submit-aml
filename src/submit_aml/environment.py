@@ -32,9 +32,7 @@ def get_env_variable_dict(
     for item in environment_variables_list:
         # Check formatting
         if item.count("=") != 1:
-            msg = (
-                f'Invalid environment variable format: "{item}", expected "KEY=VALUE".'
-            )
+            msg = f'Invalid environment variable format: "{item}", expected "KEY=VALUE".'
             raise ValueError(msg)
         key, value = item.split("=")
         environment_variables_dict[key] = value
@@ -310,9 +308,7 @@ def infer_environment(
             raise ValueError(msg)
         latest_environment = max(
             ml_client.environments.list(name=aml_environment),
-            key=lambda e: (
-                int(e.version) if e.version is not None and e.version.isdigit() else -1
-            ),
+            key=lambda e: int(e.version) if e.version is not None and e.version.isdigit() else -1,
         )
         assert latest_environment.version is not None, (
             f'Could not find a valid version for environment "{aml_environment}"'
@@ -326,9 +322,7 @@ def infer_environment(
             conda_env_file, base_docker_image=base_docker_image
         )
         if dry_run:
-            logger.info(
-                "Dry run mode enabled. Will not try to register the conda environment."
-            )
+            logger.info("Dry run mode enabled. Will not try to register the conda environment.")
             return environment_instance.name
         if ml_client is None:
             msg = "An instance of MLClient must be provided to register the conda environment."
@@ -351,14 +345,10 @@ def infer_environment(
         )
         environment_instance = Environment(build=build_context)
         if dry_run:
-            logger.info(
-                "Dry run mode enabled. Will not try to register the environment."
-            )
+            logger.info("Dry run mode enabled. Will not try to register the environment.")
             return environment_instance.name
         if ml_client is None:
-            msg = (
-                "An instance of MLClient must be provided to register the environment."
-            )
+            msg = "An instance of MLClient must be provided to register the environment."
             raise ValueError(msg)
         registered_environment = _register_environment(ml_client, environment_instance)
         assert registered_environment.name is not None
@@ -368,7 +358,8 @@ def infer_environment(
     else:
         raise ValueError(
             "Either `build_docker_context` must be True, or `aml_environment` must be"
-            " provided, or `conda_env_file` must be provided, or `base_docker_image` must be provided."
+            " provided, or `conda_env_file` must be provided, or `base_docker_image`"
+            " must be provided."
         )
     return environment
 
@@ -389,9 +380,7 @@ def _register_environment(ml_client: MLClient, environment: Environment) -> Envi
             kwargs = {"label": "latest"}
         else:
             kwargs = {"version": environment.version}
-        logger.info(
-            f'Checking if environment "{environment.name}" ({kwargs}) exists...'
-        )
+        logger.info(f'Checking if environment "{environment.name}" ({kwargs}) exists...')
         env = ml_client.environments.get(environment.name, **kwargs)
         msg = (
             f'Found a registered environment with name "{environment.name}"'

@@ -14,11 +14,7 @@ from .data import TypeInputsDict
 from .logger import logger
 
 _TypeService = (
-    JobService
-    | JupyterLabJobService
-    | SshJobService
-    | TensorBoardJobService
-    | VsCodeJobService
+    JobService | JupyterLabJobService | SshJobService | TensorBoardJobService | VsCodeJobService
 )
 TypeServices = dict[str, _TypeService]
 TypeSweepValues = list[int | float | str | dict]
@@ -198,7 +194,8 @@ def _parse_sweep_arg(sweep_arg: str) -> tuple[str, str, str, list[int | float | 
     - "seed=[0, 1, 2]" -> ("seed", "", "seed", [0, 1, 2])
     - "model/unet=[\'tiny\', \'small\']" -> ("model_unet", "", "model/unet", ["tiny", "small"])
     - "+trainer.max_epochs=[10, 20]" -> ("trainer_max_epochs", "+", "trainer.max_epochs", [10, 20])
-    - "model.learning_rate=[1.0e-2, 2.0e-2]" -> ("model_learning_rate", "", "model.learning_rate", [0.01, 0.02])
+    - "model.learning_rate=[1.0e-2, 2.0e-2]"
+      -> ("model_learning_rate", "", "model.learning_rate", [0.01, 0.02])
     """
     match = re.match(r"(\+{0,2}?)([\w./]+)=\[(.+)\]", sweep_arg)
     if not match:

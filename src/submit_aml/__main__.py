@@ -73,10 +73,7 @@ def submit(
     description: Optional[str] = typer.Option(
         None,
         "--description",
-        help=(
-            "Description for the Azure ML job."
-            " If not provided, the local command will be used."
-        ),
+        help=("Description for the Azure ML job. If not provided, the local command will be used."),
         rich_help_panel=PANEL_AZURE,
     ),
     compute_target: str = typer.Option(

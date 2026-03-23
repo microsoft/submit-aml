@@ -28,9 +28,7 @@ def test_get_config_returns_defaults_without_file_or_env(
         tmp_path / "nonexistent.toml",
     )
     # Clear any SUBMIT_AML_ env vars that may leak from the host.
-    for key in list(
-        monkeypatch._env_patch if hasattr(monkeypatch, "_env_patch") else []
-    ):  # noqa: SLF001
+    for key in list(monkeypatch._env_patch if hasattr(monkeypatch, "_env_patch") else []):  # noqa: SLF001
         pass  # monkeypatch handles cleanup automatically
     for var in list(k for k in __import__("os").environ if k.startswith("SUBMIT_AML_")):
         monkeypatch.delenv(var, raising=False)

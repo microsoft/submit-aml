@@ -72,10 +72,7 @@ def _extract_alias_datastore_path(string: str) -> tuple[str, str, str]:
     pattern = r"(?P<alias>[^=]+)=(?P<datastore>[^/]+)/(?P<folder>.+)"
     match = re.match(pattern, string)
     if match is None:
-        message = (
-            f'Invalid dataset string: "{string}".'
-            ' Expected format: "alias=datastore/folder".'
-        )
+        message = f'Invalid dataset string: "{string}". Expected format: "alias=datastore/folder".'
         logger.error(message)
         sys.exit(1)
     return match.group("alias"), match.group("datastore"), match.group("folder")

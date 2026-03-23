@@ -37,9 +37,7 @@ def test_extract_alias_path_version_without_version() -> None:
 
 def test_extract_alias_datastore_path_valid() -> None:
     """'alias=datastore/folder' is parsed into three components."""
-    alias, ds, folder = _extract_alias_datastore_path(
-        "my_data=inereyedata/output_dataset"
-    )
+    alias, ds, folder = _extract_alias_datastore_path("my_data=inereyedata/output_dataset")
     assert alias == "my_data"
     assert ds == "inereyedata"
     assert folder == "output_dataset"
@@ -52,9 +50,7 @@ def test_extract_alias_datastore_path_valid() -> None:
 
 def test_extract_alias_job_path_valid() -> None:
     """'alias=job_dir:job_id:path' is parsed correctly."""
-    alias, job_id, path = _extract_alias_job_path(
-        "checkpoint=job_dir:my_job_123:models/best.pth"
-    )
+    alias, job_id, path = _extract_alias_job_path("checkpoint=job_dir:my_job_123:models/best.pth")
     assert alias == "checkpoint"
     assert job_id == "my_job_123"
     assert path == "models/best.pth"
