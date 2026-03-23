@@ -23,7 +23,8 @@ def _extract_alias_path_version(string: str) -> tuple[str, str, str | None]:
         string: String of the form `'alias=path:version'` or `'alias=path'`.
 
     Returns:
-        Tuple of alias, path, and version (which may be None if version is not provided).
+        Tuple of alias, path, and version (which may be
+        None if version is not provided).
 
     Raises:
         ValueError: If the string is not of the expected format.
@@ -211,7 +212,11 @@ def _get_data_assets(
             try:
                 data = ml_client.data.get(name=path, **kwargs)
             except MlException as e:
-                msg = f'Error getting data asset with name "{path}" and version "{version}"'
+                msg = (
+                    "Error getting data asset with"
+                    f' name "{path}"'
+                    f' and version "{version}"'
+                )
                 raise ValueError(msg) from e
             logger.success(f'Found data asset with path "{path}"')
             inputs[alias] = Input(

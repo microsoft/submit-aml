@@ -108,8 +108,9 @@ def submit(
         None,
         "--aml-environment",
         help=(
-            "Name of an existing Azure ML environment to use for the job."
-            " If provided, the Docker image and build context arguments will be ignored."
+            "Name of an existing Azure ML environment to use"
+            " for the job. If provided, the Docker image and"
+            " build context arguments will be ignored."
         ),
         rich_help_panel=PANEL_ENVIRONMENT,
     ),
@@ -317,8 +318,10 @@ def submit(
         None,
         "--conda-env-file",
         help=(
-            "Path to a conda environment YAML file (e.g., environment.yml)."
-            " If provided, a conda environment will be used instead of Docker build context."
+            "Path to a conda environment YAML file"
+            " (e.g., environment.yml). If provided, a conda"
+            " environment will be used instead of"
+            " Docker build context."
             " Cannot be used together with --build-context, --aml-environment,"
             " or uv-specific options."
         ),
