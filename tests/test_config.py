@@ -21,7 +21,10 @@ def test_get_config_returns_defaults_without_file_or_env(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """get_config() should fall back to package defaults when no config file or env vars exist."""
+    """get_config() should fall back to package defaults.
+
+    Verifies behavior when no config file or env vars exist.
+    """
     # Point CONFIG_PATH to a non-existent file so the TOML layer is skipped.
     monkeypatch.setattr(
         "submit_aml.config.CONFIG_PATH",
