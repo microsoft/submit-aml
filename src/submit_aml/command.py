@@ -88,14 +88,11 @@ def build_debug_command(
         A tuple containing the modified command prefix and executable.
 
     Examples:
-        ``build_debug_command("uv run", "python")``
-        returns a tuple with ``'uv run --with debugpy'``
-        and the debugpy listen command.
-
-        ``build_debug_command("", "python")``
-        returns a tuple with ``'pip install debugpy &&'``
-        and the debugpy listen command.
-    """
+        >>> build_debug_command("uv run", "python")
+        ('uv run --with debugpy', 'python -m debugpy --listen localhost:5678 --wait-for-client')
+        >>> build_debug_command("", "python")
+        ('pip install debugpy &&', 'python -m debugpy --listen localhost:5678 --wait-for-client')
+    """  # noqa: E501
     if command_prefix.startswith("uv run"):
         logger.info('Adding debugpy to uv run command using "--with"')
         command_prefix += " --with debugpy"
@@ -181,10 +178,7 @@ def _parse_value_string(value_str: str) -> int | float | str:
 
 
 def _parse_values_string(values_str: str) -> list[int | float | str]:
-    """Parse a comma-separated string of values into a list.
-
-    Parses into integers, floats, or strings.
-    """
+    """Parse a comma-separated string of values into a list of integers, floats, or strings."""  # noqa: E501
     values = []
     for value_str in values_str.split(","):
         value = _parse_value_string(value_str.strip())
@@ -195,27 +189,17 @@ def _parse_values_string(values_str: str) -> list[int | float | str]:
 def _parse_sweep_arg(sweep_arg: str) -> tuple[str, str, str, list[int | float | str]]:
     r"""Parse arguments for AML hyperparameter sweep.
 
-    Parses a string of the form
-    "parameter=[value1, value2, ...]" into a tuple containing:
-    - The sanitized parameter name (replacing slashes
-      and dots with underscores) for AML.
-    - The original parameter path
-      (with slashes and dots).
+    Parses a string of the form "parameter=[value1, value2, ...]" into a tuple containing:
+    - The sanitized parameter name (replacing slashes and dots with underscores) for AML.
+    - The original parameter path (with slashes and dots).
     - A list of values parsed from the string.
 
     Examples:
-    - "seed=[0, 1, 2]"
-      -> ("seed", "", "seed", [0, 1, 2])
-    - "model/unet=[\'tiny\', \'small\']"
-      -> ("model_unet", "", "model/unet",
-      ["tiny", "small"])
-    - "+trainer.max_epochs=[10, 20]"
-      -> ("trainer_max_epochs", "+",
-      "trainer.max_epochs", [10, 20])
-    - "model.learning_rate=[1.0e-2, 2.0e-2]"
-      -> ("model_learning_rate", "",
-      "model.learning_rate", [0.01, 0.02])
-    """
+    - "seed=[0, 1, 2]" -> ("seed", "", "seed", [0, 1, 2])
+    - "model/unet=[\'tiny\', \'small\']" -> ("model_unet", "", "model/unet", ["tiny", "small"])
+    - "+trainer.max_epochs=[10, 20]" -> ("trainer_max_epochs", "+", "trainer.max_epochs", [10, 20])
+    - "model.learning_rate=[1.0e-2, 2.0e-2]" -> ("model_learning_rate", "", "model.learning_rate", [0.01, 0.02])
+    """  # noqa: E501
     match = re.match(r"(\+{0,2}?)([\w./]+)=\[(.+)\]", sweep_arg)
     if not match:
         raise ValueError(f"Invalid sweep argument: {sweep_arg}")
