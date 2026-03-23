@@ -98,9 +98,6 @@ testpaths = ["tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 
-[tool.ruff.lint.per-file-ignores]
-"src/submit_aml/config.py" = ["E501"]
-
 [tool.ruff.lint.isort]
 force-single-line = true
 
