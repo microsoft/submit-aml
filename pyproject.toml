@@ -52,6 +52,7 @@ Issues = "https://github.com/microsoft/submit-aml/issues"
 
 [dependency-groups]
 dev = [
+    "prek>=0.3.6",
     "tox",
     "tox-uv",
 ]
@@ -108,4 +109,3 @@ convention = "google"
 constraint-dependencies = [
     "click<8.2", # https://github.com/fastapi/typer/discussions/1215
 ]
-
