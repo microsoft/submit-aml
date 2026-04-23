@@ -15,10 +15,12 @@ Example::
     )
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import version
 
 from .aml import submit_to_aml
 
 __all__ = [
     "submit_to_aml",
 ]
+
+__version__ = version(__name__)

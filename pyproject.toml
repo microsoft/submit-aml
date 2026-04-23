@@ -52,6 +52,8 @@ Issues = "https://github.com/microsoft/submit-aml/issues"
 
 [dependency-groups]
 dev = [
+    "bump-my-version",
+    "prek",
     "prek>=0.3.6",
     "tox",
     "tox-uv",
@@ -66,10 +68,6 @@ quality = [
 types = [
     "ty",
 ]
-maintain = [
-    "bump-my-version",
-    "prek",
-]
 docs = [
     "zensical",
     "mkdocs-typer>=0.0.3",
@@ -80,11 +78,6 @@ docs = [
 current_version = "0.1.0"
 commit = true
 tag = true
-
-[[tool.bumpversion.files]]
-filename = "src/submit_aml/__init__.py"
-search = "__version__ = '{current_version}'"
-replace = "__version__ = '{new_version}'"
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
