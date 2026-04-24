@@ -1,5 +1,6 @@
 import re
 import sys
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ from azure.ai.ml.entities import Job
 from azure.ai.ml.entities._job.sweep.search_space import SweepDistribution
 from azure.ai.ml.sweep import Choice
 from azure.identity import AzureCliCredential
+from azure.identity import ManagedIdentityCredential
 from rich.console import Console
 
 from .command import TypeServices
@@ -39,22 +41,38 @@ TypeInputsDict = dict[str, Input | Choice]
 _MAX_SWEEP_DESCRIPTION_LENGTH = 511
 
 
+class CredentialType(StrEnum):
+    """Credential type used to authenticate with Azure ML."""
+
+    CLI = "cli"
+    """Azure CLI credential of the usercurrently logged-in user."""
+    MSI = "msi"
+    """Managed Identity assigned to the Azure resource."""
+
+
 def get_client(
     subscription_id: str | None = None,
     resource_group: str | None = None,
     workspace_name: str | None = None,
+    credential_type: CredentialType = CredentialType.CLI,
 ) -> MLClient:
-    """Create and return an Azure ML client authenticated via the Azure CLI.
+    """Create and return an Azure ML client.
 
     Args:
         subscription_id: Azure subscription ID.
         resource_group: Azure resource group name.
         workspace_name: Azure Machine Learning workspace name.
+        credential_type: Credential type to use for authentication.
 
     Returns:
         An authenticated ``MLClient`` instance.
     """
-    credential = AzureCliCredential(process_timeout=30)
+    if credential_type is CredentialType.MSI:
+        credential = ManagedIdentityCredential()
+        logger.info("Using Managed Identity credential for authentication.")
+    else:
+        credential = AzureCliCredential(process_timeout=30)
+        logger.info("Using Azure CLI credential for authentication.")
     ml_client = MLClient(
         credential,
         subscription_id,
@@ -75,6 +93,7 @@ def setup(
     num_gpus: int | None,
     num_nodes: int,
     experiment_name: str | None,
+    credential_type: CredentialType = CredentialType.CLI,
 ) -> tuple[
     Path,
     Path,
@@ -97,6 +116,8 @@ def setup(
         description: Description of the job.
         num_gpus: Number of GPUs per node (if applicable).
         num_nodes: Number of nodes to use for the job.
+        experiment_name: Name of the experiment.
+        credential_type: Credential type to use for authentication.
 
     Returns:
         source_dir: Resolved source directory.
@@ -123,6 +144,7 @@ def setup(
         subscription_id,
         resource_group,
         workspace_name,
+        credential_type=credential_type,
     )
 
     if script_path is None:
@@ -239,6 +261,7 @@ def submit_to_aml(
     command_prefix: str = get_default("command_prefix"),
     compute_target: str | None = get_default("compute_target"),
     conda_env_file: Path | None = None,
+    credential_type: CredentialType = CredentialType.CLI,
     datasets_download: TypeOptionalStrList = None,
     datasets_mount: TypeOptionalStrList = None,
     datasets_output: TypeOptionalStrList = None,
@@ -359,6 +382,7 @@ def submit_to_aml(
         num_gpus,
         num_nodes,
         experiment_name,
+        credential_type=credential_type,
     )
 
     environment = infer_environment(
