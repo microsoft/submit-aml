@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "submit-aml"
-version = "1.0.0"
+version = "1.0.1"
 description = "CLI tool to submit jobs to Azure Machine Learning"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -75,7 +75,7 @@ docs = [
 ]
 
 [tool.bumpversion]
-current_version = "1.0.0"
+current_version = "1.0.1"
 commit = true
 tag = true
 
