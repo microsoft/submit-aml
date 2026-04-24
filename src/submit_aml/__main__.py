@@ -7,6 +7,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 
+from .aml import CredentialType
 from .aml import submit_to_aml
 from .command import get_sweep_inputs_from_args
 from .config import get_default
@@ -68,6 +69,15 @@ def submit(
         None,
         "--subscription",
         help="Subscription ID of the workspace.",
+        rich_help_panel=PANEL_AZURE,
+    ),
+    credential: CredentialType = typer.Option(
+        CredentialType.CLI,
+        "--credential",
+        help=(
+            "Credential type to use for Azure authentication."
+            ' Use "cli" for Azure CLI or "msi" for managed identity.'
+        ),
         rich_help_panel=PANEL_AZURE,
     ),
     description: Optional[str] = typer.Option(
@@ -383,6 +393,7 @@ def submit(
             command_prefix=command_prefix,
             compute_target=compute_target,
             conda_env_file=conda_env_file,
+            credential_type=credential,
             datasets_download=datasets_download,
             datasets_mount=datasets_mount,
             datasets_output=output,
