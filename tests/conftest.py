@@ -2,9 +2,21 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
+
+# Point the CLI at a guaranteed non-existent config file BEFORE ``submit_aml``
+# is imported anywhere in the test session, so that Typer option defaults
+# (evaluated at import time) do not pick up the developer's real
+# ``~/.config/submit-aml/config.toml``. Likewise drop any ``SUBMIT_AML_*``
+# variables that may leak from the host shell.
+os.environ["SUBMIT_AML_CONFIG"] = "/nonexistent/submit-aml/config.toml"
+for _var in [
+    k for k in os.environ if k.startswith("SUBMIT_AML_") and k != "SUBMIT_AML_CONFIG"
+]:
+    del os.environ[_var]
 
 
 @pytest.fixture

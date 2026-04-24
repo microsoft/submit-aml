@@ -20,7 +20,7 @@ from typing import Any
 if sys.version_info >= (3, 11):
     import tomllib
 else:
-    import tomli as tomllib  # type: ignore[unresolved-import]
+    import tomli as tomllib  # ty: ignore[unresolved-import]
 
 from .defaults import DEFAULT_COMMAND_PREFIX
 from .defaults import DEFAULT_COMPUTE_TARGET
@@ -32,10 +32,26 @@ from .defaults import DEFAULT_NUM_NODES
 from .defaults import DEFAULT_TENSORBOARD_DIR
 from .logger import logger
 
-CONFIG_PATH: Path = Path("~/.config/submit-aml/config.toml").expanduser()
-"""Default location for the user-level TOML config file."""
-
 _ENV_PREFIX: str = "SUBMIT_AML_"
+
+_CONFIG_PATH_ENV_VAR: str = f"{_ENV_PREFIX}CONFIG"
+"""Environment variable that overrides the TOML config file location."""
+
+
+def _resolve_config_path() -> Path:
+    """Resolve the TOML config path, honoring the override env var."""
+    override = os.environ.get(_CONFIG_PATH_ENV_VAR)
+    if override:
+        return Path(override).expanduser()
+    return Path("~/.config/submit-aml/config.toml").expanduser()
+
+
+CONFIG_PATH: Path = _resolve_config_path()
+"""Default location for the user-level TOML config file.
+
+Set the ``SUBMIT_AML_CONFIG`` environment variable to point at a different
+file (or at a non-existent path to skip TOML config entirely).
+"""
 
 # ---------------------------------------------------------------------------
 # Registry: flat key → (TOML (section, key), package default)
