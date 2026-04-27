@@ -67,12 +67,15 @@ def get_client(
     Returns:
         An authenticated ``MLClient`` instance.
     """
-    if credential_type is CredentialType.MSI:
-        credential = ManagedIdentityCredential()
-        logger.info("Using Managed Identity credential for authentication.")
-    else:
-        credential = AzureCliCredential(process_timeout=30)
-        logger.info("Using Azure CLI credential for authentication.")
+    match credential_type:
+        case CredentialType.CLI:
+            credential = AzureCliCredential(process_timeout=30)
+            logger.info("Using Azure CLI credential for authentication.")
+        case CredentialType.MSI:
+            credential = ManagedIdentityCredential()
+            logger.info("Using Managed Identity credential for authentication.")
+        case _:
+            raise ValueError(f"Unsupported credential type: {credential_type}")
     ml_client = MLClient(
         credential,
         subscription_id,
