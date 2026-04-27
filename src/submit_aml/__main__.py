@@ -72,7 +72,7 @@ def submit(
         rich_help_panel=PANEL_AZURE,
     ),
     credential: CredentialType = typer.Option(
-        CredentialType.CLI,
+        CredentialType.AZURE_CLI,
         "--credential",
         help=(
             "Credential type to use for Azure authentication."

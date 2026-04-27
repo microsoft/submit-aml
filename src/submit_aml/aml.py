@@ -44,9 +44,9 @@ _MAX_SWEEP_DESCRIPTION_LENGTH = 511
 class CredentialType(str, Enum):
     """Credential type used to authenticate with Azure ML."""
 
-    CLI = "cli"
+    AZURE_CLI = "cli"
     """Azure CLI credential of the currently logged-in user."""
-    MSI = "msi"
+    MANAGED_IDENTITY = "msi"  # "Managed Service Identity"
     """Managed Identity assigned to the Azure resource."""
 
 
@@ -54,7 +54,7 @@ def get_client(
     subscription_id: str | None = None,
     resource_group: str | None = None,
     workspace_name: str | None = None,
-    credential_type: CredentialType = CredentialType.CLI,
+    credential_type: CredentialType = CredentialType.AZURE_CLI,
 ) -> MLClient:
     """Create and return an Azure ML client.
 
@@ -68,10 +68,10 @@ def get_client(
         An authenticated ``MLClient`` instance.
     """
     match credential_type:
-        case CredentialType.CLI:
+        case CredentialType.AZURE_CLI:
             credential = AzureCliCredential(process_timeout=30)
             logger.info("Using Azure CLI credential for authentication.")
-        case CredentialType.MSI:
+        case CredentialType.MANAGED_IDENTITY:
             credential = ManagedIdentityCredential()
             logger.info("Using Managed Identity credential for authentication.")
         case _:
@@ -96,7 +96,7 @@ def setup(
     num_gpus: int | None,
     num_nodes: int,
     experiment_name: str | None,
-    credential_type: CredentialType = CredentialType.CLI,
+    credential_type: CredentialType = CredentialType.AZURE_CLI,
 ) -> tuple[
     Path,
     Path,
@@ -264,7 +264,7 @@ def submit_to_aml(
     command_prefix: str = get_default("command_prefix"),
     compute_target: str | None = get_default("compute_target"),
     conda_env_file: Path | None = None,
-    credential_type: CredentialType = CredentialType.CLI,
+    credential_type: CredentialType = CredentialType.AZURE_CLI,
     datasets_download: TypeOptionalStrList = None,
     datasets_mount: TypeOptionalStrList = None,
     datasets_output: TypeOptionalStrList = None,

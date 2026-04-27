@@ -36,9 +36,6 @@ def test_sanitize_replaces_invalid_chars(raw: str, expected: str) -> None:
     assert _sanitize_experiment_name(raw) == expected
 
 
-# --- get_client credential dispatch ---
-
-
 @patch("submit_aml.aml.MLClient")
 @patch("submit_aml.aml.AzureCliCredential")
 def test_get_client_default_uses_cli_credential(
@@ -56,6 +53,6 @@ def test_get_client_msi_uses_managed_identity(
     mock_msi_cred: object,
     mock_ml_client: object,
 ) -> None:
-    """CredentialType.MSI uses ManagedIdentityCredential."""
-    get_client("sub", "rg", "ws", credential_type=CredentialType.MSI)
+    """CredentialType.MANAGED_IDENTITY uses ManagedIdentityCredential."""
+    get_client("sub", "rg", "ws", credential_type=CredentialType.MANAGED_IDENTITY)
     mock_msi_cred.assert_called_once()  # type: ignore[union-attr]
