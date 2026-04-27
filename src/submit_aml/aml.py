@@ -1,6 +1,6 @@
 import re
 import sys
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -41,7 +41,7 @@ TypeInputsDict = dict[str, Input | Choice]
 _MAX_SWEEP_DESCRIPTION_LENGTH = 511
 
 
-class CredentialType(StrEnum):
+class CredentialType(str, Enum):
     """Credential type used to authenticate with Azure ML."""
 
     CLI = "cli"
