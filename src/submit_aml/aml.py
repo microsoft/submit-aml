@@ -44,7 +44,7 @@ _MAX_SWEEP_DESCRIPTION_LENGTH = 511
 class CredentialType(str, Enum):
     """Credential type used to authenticate with Azure ML."""
 
-    AZURE_CLI = "cli"
+    AZURE_CLI = "azcli"
     """Azure CLI credential of the currently logged-in user."""
     MANAGED_IDENTITY = "msi"  # "Managed Service Identity"
     """Managed Identity assigned to the Azure resource."""

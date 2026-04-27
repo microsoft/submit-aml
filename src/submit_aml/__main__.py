@@ -76,7 +76,7 @@ def submit(
         "--credential",
         help=(
             "Credential type to use for Azure authentication."
-            ' Use "cli" for Azure CLI or "msi" for managed identity.'
+            ' Use "azcli" for Azure CLI or "msi" for managed identity.'
         ),
         rich_help_panel=PANEL_AZURE,
     ),
