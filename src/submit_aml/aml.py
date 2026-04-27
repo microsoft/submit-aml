@@ -45,7 +45,7 @@ class CredentialType(str, Enum):
     """Credential type used to authenticate with Azure ML."""
 
     CLI = "cli"
-    """Azure CLI credential of the usercurrently logged-in user."""
+    """Azure CLI credential of the currently logged-in user."""
     MSI = "msi"
     """Managed Identity assigned to the Azure resource."""
 
