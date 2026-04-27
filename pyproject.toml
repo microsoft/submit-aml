@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "submit-aml"
-version = "1.0.0"
+version = "1.0.1"
 description = "CLI tool to submit jobs to Azure Machine Learning"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -75,7 +75,7 @@ docs = [
 ]
 
 [tool.bumpversion]
-current_version = "1.0.0"
+current_version = "1.0.1"
 commit = true
 tag = true
 
@@ -100,5 +100,5 @@ convention = "google"
 
 [tool.uv]
 constraint-dependencies = [
-    "click<8.2", # https://github.com/fastapi/typer/discussions/1215
+    "click>=8.2", # typer>=0.16 uses click.Choice as a generic (PEP 585), which requires click>=8.2
 ]

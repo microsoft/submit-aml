@@ -1,4 +1,5 @@
 [tools]
+prek = "latest"
 uv = "latest"
 
 [tasks.check]
@@ -30,9 +31,15 @@ description = "Build documentation"
 run = "uv run --group docs zensical build"
 
 [tasks.bump]
-description = "Bump version (usage: mise run bump -- patch|minor|major)"
-run = "uv run -- bump-my-version bump --verbose"
+description = "Bump version (usage: mise run bump [patch|minor|major], defaults to patch)"
+usage = '''
+arg "[part]" default="patch" help="Version part to bump"
+'''
+run = "uv run -- bump-my-version bump --verbose {{arg(name='part')}}"
 
 [tasks.bump-dry]
-description = "Dry-run version bump"
-run = "uv run -- bump-my-version bump --dry-run --verbose --allow-dirty"
+description = "Dry-run version bump (defaults to patch)"
+usage = '''
+arg "[part]" default="patch" help="Version part to bump"
+'''
+run = "uv run -- bump-my-version bump --dry-run --verbose --allow-dirty {{arg(name='part')}}"
