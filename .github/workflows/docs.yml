@@ -63,7 +63,7 @@ jobs:
       - name: Deploy preview with Smokeshow
         run: |
           uvx smokeshow upload site/ 2>&1 | tee smokeshow-output.txt
-          url=$(grep -oP 'https://\S+' smokeshow-output.txt | head -1)
+          url=$(grep -oP 'https://smokeshow\.helpmanual\.io/[^\s"]+' smokeshow-output.txt | head -1)
           echo "SMOKESHOW_URL=$url" >> "$GITHUB_ENV"
         env:
           SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Docs preview
