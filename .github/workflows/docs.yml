@@ -77,9 +77,9 @@ jobs:
           SMOKESHOW_GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
       - name: Comment on PR
-        uses: peter-evans/create-or-update-comment@v4
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
+          header: docs-preview
+          number: ${{ github.event.pull_request.number }}
+          message: |
             📖 **Docs preview**: ${{ env.SMOKESHOW_URL }}
-          comment-tag: docs-preview
