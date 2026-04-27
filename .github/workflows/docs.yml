@@ -2,6 +2,7 @@ name: Docs
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -9,6 +10,10 @@ permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   FORCE_COLOR: 1
@@ -63,7 +68,7 @@ jobs:
       - name: Deploy preview with Smokeshow
         run: |
           uvx smokeshow upload site/ 2>&1 | tee smokeshow-output.txt
-          url=$(grep -oP 'https://\S+' smokeshow-output.txt | head -1)
+          url=$(grep -oP 'https://smokeshow\.helpmanual\.io/[^\s"]+' smokeshow-output.txt | head -1)
           echo "SMOKESHOW_URL=$url" >> "$GITHUB_ENV"
         env:
           SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Docs preview
