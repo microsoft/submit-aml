@@ -11,7 +11,7 @@ from .aml import CredentialType
 from .aml import submit_to_aml
 from .command import get_sweep_inputs_from_args
 from .config import get_default
-from .environment import get_env_variable_dict
+from .environment import parse_key_value_pairs
 from .logger import logger
 
 PANEL_AZURE = "Azure"
@@ -365,6 +365,17 @@ def submit(
         "-D",
         help="Exit before submitting the job.",
     ),
+    tags: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--tag",
+        "-t",
+        help=(
+            "Tags to set on the Azure ML job."
+            " The format is `KEY=VALUE`."
+            " This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_AZURE,
+    ),
     context: typer.Context = typer.Option(
         None,
         help="[Extra arguments to be added to the command]",
@@ -382,8 +393,9 @@ def submit(
             --my-script-arg "hello"
     ```
     """
-    environment_variables_dict = get_env_variable_dict(environment_variables)
+    environment_variables_dict = parse_key_value_pairs(environment_variables)
     sweep_inputs_dict = get_sweep_inputs_from_args(sweep_args)
+    tags_dict = parse_key_value_pairs(tags)
 
     try:
         submit_to_aml(
@@ -422,6 +434,7 @@ def submit(
             sweep_inputs=sweep_inputs_dict,
             sweep_max_concurrent_trials=sweep_max_concurrent_trials,
             sweep_prefix=sweep_prefix,
+            tags=tags_dict,
             tensorboard_dir=tensorboard_dir,
             wait_for_completion=stream_logs,
             workspace_name=workspace_name,
