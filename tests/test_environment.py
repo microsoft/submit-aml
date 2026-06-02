@@ -7,34 +7,34 @@ from pathlib import Path
 import pytest
 
 from submit_aml.environment import _check_has_patch
-from submit_aml.environment import get_env_variable_dict
+from submit_aml.environment import parse_key_value_pairs
 
 # ---------------------------------------------------------------------------
-# get_env_variable_dict
+# parse_key_value_pairs
 # ---------------------------------------------------------------------------
 
 
-def test_get_env_variable_dict_none() -> None:
+def test_parse_key_value_pairs_none() -> None:
     """None input returns an empty dict."""
-    assert get_env_variable_dict(None) == {}
+    assert parse_key_value_pairs(None) == {}
 
 
-def test_get_env_variable_dict_valid() -> None:
+def test_parse_key_value_pairs_valid() -> None:
     """A well-formed list produces the expected mapping."""
-    result = get_env_variable_dict(["FOO=bar", "BAZ=qux"])
+    result = parse_key_value_pairs(["FOO=bar", "BAZ=qux"])
     assert result == {"FOO": "bar", "BAZ": "qux"}
 
 
-def test_get_env_variable_dict_invalid_format_raises() -> None:
+def test_parse_key_value_pairs_invalid_format_raises() -> None:
     """Items without exactly one '=' raise ValueError."""
-    with pytest.raises(ValueError, match="Invalid environment variable"):
-        get_env_variable_dict(["NO_EQUALS_SIGN"])
+    with pytest.raises(ValueError, match="Invalid format"):
+        parse_key_value_pairs(["NO_EQUALS_SIGN"])
 
 
-def test_get_env_variable_dict_too_many_equals_raises() -> None:
+def test_parse_key_value_pairs_too_many_equals_raises() -> None:
     """Items with more than one '=' raise ValueError."""
-    with pytest.raises(ValueError, match="Invalid environment variable"):
-        get_env_variable_dict(["A=B=C"])
+    with pytest.raises(ValueError, match="Invalid format"):
+        parse_key_value_pairs(["A=B=C"])
 
 
 # ---------------------------------------------------------------------------

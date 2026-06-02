@@ -15,30 +15,27 @@ from .defaults import DEFAULT_UV_SYNC_COMMAND
 from .logger import logger
 
 
-def get_env_variable_dict(
-    environment_variables_list: list[str] | None,
+def parse_key_value_pairs(
+    items: list[str] | None,
 ) -> dict[str, str]:
-    """Convert a list of `"KEY=VALUE"` environment variables to a dictionary.
+    """Convert a list of `"KEY=VALUE"` strings to a dictionary.
 
     Args:
-        environment_variables_list: Environment variables in the format `"KEY=VALUE"`.
+        items: Strings in the format `"KEY=VALUE"`.
 
     Returns:
-        Dictionary with environment variable names as keys and their values as values.
+        Dictionary with keys mapped to their corresponding values.
     """
-    if environment_variables_list is None:
+    if items is None:
         return {}
-    environment_variables_dict = {}
-    for item in environment_variables_list:
-        # Check formatting
+    result = {}
+    for item in items:
         if item.count("=") != 1:
-            msg = (
-                f'Invalid environment variable format: "{item}", expected "KEY=VALUE".'
-            )
+            msg = f'Invalid format: "{item}", expected "KEY=VALUE".'
             raise ValueError(msg)
         key, value = item.split("=")
-        environment_variables_dict[key] = value
-    return environment_variables_dict
+        result[key] = value
+    return result
 
 
 def log_environment_variables(environment: dict[str, Any]) -> None:
