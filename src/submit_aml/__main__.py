@@ -393,11 +393,11 @@ def submit(
             --my-script-arg "hello"
     ```
     """
-    environment_variables_dict = parse_key_value_pairs(environment_variables)
-    sweep_inputs_dict = get_sweep_inputs_from_args(sweep_args)
-    tags_dict = parse_key_value_pairs(tags)
-
     try:
+        environment_variables_dict = parse_key_value_pairs(environment_variables)
+        sweep_inputs_dict = get_sweep_inputs_from_args(sweep_args)
+        tags_dict = parse_key_value_pairs(tags)
+
         submit_to_aml(
             aml_environment=aml_environment,
             base_docker_image=docker_image,
