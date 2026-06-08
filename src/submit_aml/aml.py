@@ -14,7 +14,9 @@ from azure.ai.ml.entities._job.sweep.search_space import SweepDistribution
 from azure.ai.ml.sweep import Choice
 from azure.identity import AzureCliCredential
 from azure.identity import ManagedIdentityCredential
-from rich.console import Console
+from rich import box
+from rich.table import Table
+from rich.text import Text
 
 from .command import TypeServices
 from .command import add_service_for_debugging
@@ -32,6 +34,8 @@ from .defaults import DEFAULT_SWEEP_ALGORITHM
 from .environment import add_profiler_env_variables
 from .environment import infer_environment
 from .environment import log_environment_variables
+from .logger import console
+from .logger import indent
 from .logger import logger
 from .logger import suppress_azure_warnings
 from .paths import get_cwd
@@ -39,6 +43,57 @@ from .progress import report_time
 
 TypeInputsDict = dict[str, Input | Choice]
 _MAX_SWEEP_DESCRIPTION_LENGTH = 511
+
+_NUMBER_WORDS = {
+    0: "zero",
+    1: "one",
+    2: "two",
+    3: "three",
+    4: "four",
+    5: "five",
+    6: "six",
+    7: "seven",
+    8: "eight",
+    9: "nine",
+}
+
+
+def _spell_number(number: int) -> str:
+    """Return a natural-language representation of a small non-negative number.
+
+    Numbers below ten are spelled out; larger numbers are returned as digits.
+
+    Examples:
+        >>> _spell_number(1)
+        'one'
+        >>> _spell_number(9)
+        'nine'
+        >>> _spell_number(10)
+        '10'
+
+    Args:
+        number: The number to render.
+    """
+    return _NUMBER_WORDS.get(number, str(number))
+
+
+def _count_noun(number: int, noun: str) -> str:
+    """Return a spelled-out count followed by a correctly pluralised noun.
+
+    Examples:
+        >>> _count_noun(1, "node")
+        'one node'
+        >>> _count_noun(2, "node")
+        'two nodes'
+        >>> _count_noun(4, "GPU")
+        'four GPUs'
+
+    Args:
+        number: The count.
+        noun: The singular noun to pluralise when ``number`` is not one.
+    """
+    plural = noun if number == 1 else f"{noun}s"
+    return f"{_spell_number(number)} {plural}"
 
 
 class CredentialType(str, Enum):
@@ -175,15 +230,15 @@ def setup(
     if num_gpus is None:
         instance_count = num_nodes
         distribution = MpiDistribution()
-        logger.info(f'Using "MPI" distribution with {num_nodes} nodes.')
+        logger.info(f'Using "MPI" distribution with {_count_noun(num_nodes, "node")}.')
     else:
         instance_count = num_nodes
         distribution = PyTorchDistribution(
             process_count_per_instance=num_gpus,
         )
         logger.info(
-            f'Using "PyTorch" distribution with {num_nodes} nodes and '
-            f"{num_gpus} GPUs per node."
+            f'Using "PyTorch" distribution with {_count_noun(num_nodes, "node")}'
+            f" and {_count_noun(num_gpus, 'GPU')} per node."
         )
 
     experiment_name = _sanitize_experiment_name(experiment_name)
@@ -231,22 +286,12 @@ def _submit(
 
     start_msg = "Submitting job to Azure Machine Learning..."
     end_msg = "Job submitted successfully"
-    with report_time(start_msg, end_msg):
+    # The SDK renders its own tqdm upload progress bar, so we don't show a
+    # spinner here (two live displays would clash).
+    with report_time(start_msg, end_msg, spinner=False):
         returned_job = ml_client.create_or_update(command_job)
 
-    logger.info(f'Run ID: "{returned_job.name}"')
-
-    if returned_job.display_name is not None:
-        logger.info(f'Display name: "{returned_job.display_name}"')
-
-    logger.info("Studio URL:")
-    assert returned_job.services is not None
-    url = returned_job.services["Studio"].endpoint
-    # Log the run URL. We use this instead of the logger so the URL is clickable and
-    # not split over multiple lines.
-    # See https://github.com/Textualize/rich/issues/886#issuecomment-756406589
-    # for more details.
-    Console().print(url, style=f"link {url}")
+    _print_job_summary(returned_job)
 
     if wait_for_completion:
         logger.info("Starting logs streaming...")
@@ -254,6 +299,38 @@ def _submit(
         ml_client.jobs.stream(returned_job.name)
 
     return returned_job
+
+
+def _print_job_summary(job: Job) -> None:
+    """Print a summary table for a submitted job.
+
+    Args:
+        job: The job returned by Azure ML after submission.
+    """
+    assert job.services is not None
+    url = job.services["Studio"].endpoint
+    assert url is not None
+
+    table = Table(
+        box=box.ROUNDED,
+        show_header=False,
+        title="Job submitted",
+        title_style="bold green",
+        title_justify="left",
+    )
+    table.add_column(style="bold cyan", justify="right")
+    table.add_column(overflow="fold")
+
+    table.add_row("Run ID", job.name)
+    if job.display_name is not None:
+        table.add_row("Display name", job.display_name)
+    if job.experiment_name is not None:
+        table.add_row("Experiment", job.experiment_name)
+    # Render the URL as a hyperlink so it stays clickable even if it wraps.
+    # See https://github.com/Textualize/rich/issues/886#issuecomment-756406589.
+    table.add_row("Studio URL", Text(url, style=f"link {url}"))
+
+    console.print(table)
 
 
 def submit_to_aml(
@@ -365,41 +442,45 @@ def submit_to_aml(
                 "Conda environments manage their own"
                 " dependencies."
             )
-    (
-        source_dir,
-        project_dir,
-        script_path,
-        ml_client,
-        description,
-        instance_count,
-        distribution,
-        experiment_name,
-    ) = setup(
-        source_dir,
-        project_dir,
-        script_path,
-        subscription_id,
-        resource_group,
-        workspace_name,
-        description,
-        num_gpus,
-        num_nodes,
-        experiment_name,
-        credential_type=credential_type,
-    )
+    logger.info("Configuring job...")
+    with indent():
+        (
+            source_dir,
+            project_dir,
+            script_path,
+            ml_client,
+            description,
+            instance_count,
+            distribution,
+            experiment_name,
+        ) = setup(
+            source_dir,
+            project_dir,
+            script_path,
+            subscription_id,
+            resource_group,
+            workspace_name,
+            description,
+            num_gpus,
+            num_nodes,
+            experiment_name,
+            credential_type=credential_type,
+        )
 
-    environment = infer_environment(
-        ml_client=ml_client,
-        project_dir=project_dir,
-        base_docker_image=base_docker_image,
-        dependency_groups=dependency_groups,
-        optional_dependencies=optional_dependencies,
-        aml_environment=aml_environment,
-        build_docker_context=build_docker_context,
-        conda_env_file=conda_env_file,
-        docker_run=docker_run,
-        dry_run=dry_run,
-    )
+    logger.info("Preparing environment...")
+    with indent():
+        environment = infer_environment(
+            ml_client=ml_client,
+            project_dir=project_dir,
+            base_docker_image=base_docker_image,
+            dependency_groups=dependency_groups,
+            optional_dependencies=optional_dependencies,
+            aml_environment=aml_environment,
+            build_docker_context=build_docker_context,
+            conda_env_file=conda_env_file,
+            docker_run=docker_run,
+            dry_run=dry_run,
+        )
     if only_environment:
         msg = "The environment build has been submitted. No job will be submitted."
         logger.warning(msg)

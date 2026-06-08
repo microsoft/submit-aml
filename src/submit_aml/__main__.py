@@ -5,14 +5,13 @@ from typing import List  # noqa: UP035
 from typing import Optional
 
 import typer
-from rich.console import Console
 
 from .aml import CredentialType
 from .aml import submit_to_aml
 from .command import get_sweep_inputs_from_args
 from .config import get_default
 from .environment import parse_key_value_pairs
-from .logger import logger
+from .errors import report_exception
 
 PANEL_AZURE = "Azure"
 PANEL_COMMAND = "Command"
@@ -439,10 +438,9 @@ def submit(
             wait_for_completion=stream_logs,
             workspace_name=workspace_name,
         )
-    except Exception:
-        logger.critical("Failed to submit job to Azure ML. Reason:")
-        console = Console()
-        console.print_exception()
+    except Exception as exc:
+        report_exception(exc, message="The Azure ML job could not be submitted.")
+        raise typer.Exit(code=1) from exc
 
 
 if __name__ == "__main__":

@@ -1,11 +1,21 @@
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 
-from loguru import logger
 from rich.progress import Progress
 from rich.progress import SpinnerColumn
 from rich.progress import TextColumn
 from rich.progress import TimeElapsedColumn
+
+from .logger import _INDENT
+from .logger import console
+from .logger import get_depth
+from .logger import indent
+from .logger import logger
+
+# Whether a spinner is currently being displayed. Rich allows only one live
+# display per console at a time, so nested spinners fall back to plain logging.
+_spinner_active = False
 
 
 class BarlessProgress(Progress):
@@ -17,47 +27,59 @@ class BarlessProgress(Progress):
             TextColumn("[progress.description]{task.description}"),
             TimeElapsedColumn(),
         ]
-        super().__init__(*columns, *args, **kwargs)
+        super().__init__(*columns, *args, console=console, **kwargs)
 
 
 @contextmanager
-def report_time_fancy(start_msg: str, end_msg: str):
-    """Context manager that shows a Rich progress bar and logs elapsed time.
+def report_time(
+    start_msg: str,
+    end_msg: str,
+    *,
+    spinner: bool = True,
+) -> Iterator[None]:
+    """Show a spinner while a block runs and report the elapsed time.
 
-    Displays a spinner with ``start_msg`` while the block executes, then logs
-    ``end_msg`` together with the elapsed time on completion.
+    While the block executes, a spinner with a live elapsed-time counter is
+    displayed next to ``start_msg`` so the user gets feedback that work is in
+    progress. Output emitted inside the block is indented one level and rendered
+    above the spinner. When the block completes, the spinner is cleared and
+    ``end_msg`` is logged together with the elapsed time.
 
-    Args:
-        start_msg: Message shown in the progress bar during execution.
-        end_msg: Message logged after the block completes.
-    """
-    begin = time.time()
-    with BarlessProgress() as progress:
-        task = progress.add_task(start_msg, total=1)
-        yield
-        progress.update(task, advance=1)
-    end = time.time()
-    delta = _natural_delta(end - begin)
-    logger.success(f"{end_msg} in {delta}!")
-
-
-@contextmanager
-def report_time(start_msg: str, end_msg: str):
-    """Context manager that logs start/end messages with elapsed time.
-
-    Logs ``start_msg`` before the block executes and ``end_msg`` together with
-    the elapsed time after it completes.
+    The spinner is skipped (``start_msg`` is logged as a plain header instead)
+    when ``spinner`` is ``False``, when the console is not a terminal, or when a
+    spinner is already active (rich allows only one live display per console).
+    Disable the spinner for operations that render their own progress output
+    (e.g. uploads), so the two live displays do not clash.
 
     Args:
-        start_msg: Message logged before execution begins.
+        start_msg: Message shown next to the spinner during execution.
         end_msg: Message logged after the block completes.
+        spinner: Whether to display a spinner. Set to ``False`` for operations
+            that print their own progress.
+
+    Yields:
+        ``None``.
     """
+    global _spinner_active
     begin = time.time()
-    logger.info(start_msg)
-    yield
-    end = time.time()
-    delta = _natural_delta(end - begin)
-    logger.success(f"{end_msg} in {delta}!")
+
+    if not spinner or _spinner_active or not console.is_terminal:
+        logger.info(start_msg)
+        with indent():
+            yield
+    else:
+        description = f"{_INDENT * get_depth()}{start_msg}"
+        _spinner_active = True
+        try:
+            with BarlessProgress(transient=True) as progress:
+                progress.add_task(description, total=None)
+                with indent():
+                    yield
+        finally:
+            _spinner_active = False
+
+    delta = _natural_delta(time.time() - begin)
+    logger.success(f"{end_msg} in {delta}.")
 
 
 def _natural_delta(delta_seconds: float) -> str:

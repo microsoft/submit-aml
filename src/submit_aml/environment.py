@@ -13,6 +13,7 @@ from azure.core.exceptions import ResourceNotFoundError
 from .defaults import DEFAULT_DOCKER_IMAGE
 from .defaults import DEFAULT_UV_SYNC_COMMAND
 from .logger import logger
+from .progress import report_time
 
 
 def parse_key_value_pairs(
@@ -393,17 +394,20 @@ def _register_environment(ml_client: MLClient, environment: Environment) -> Envi
             kwargs = {"label": "latest"}
         else:
             kwargs = {"version": environment.version}
-        logger.info(
-            f'Checking if environment "{environment.name}" ({kwargs}) exists...'
-        )
-        env = ml_client.environments.get(environment.name, **kwargs)
+        start_msg = f'Checking if environment "{environment.name}" ({kwargs}) exists...'
+        with report_time(start_msg, "Environment lookup complete"):
+            env = ml_client.environments.get(environment.name, **kwargs)
         msg = (
             f'Found a registered environment with name "{environment.name}"'
             f' and version "{env.version}"'
         )
         logger.info(msg)
     except ResourceNotFoundError:
-        logger.info("Environment not found. Registering a new one...")
-        env = ml_client.environments.create_or_update(environment)
+        with report_time(
+            "Environment not found. Registering a new one...",
+            "Environment registered",
+            spinner=False,
+        ):
+            env = ml_client.environments.create_or_update(environment)
         logger.info(f'Registered environment: "{env.name}" (version: "{env.version}")')
     return env
