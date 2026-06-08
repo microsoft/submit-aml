@@ -56,5 +56,5 @@ def test_check_has_patch_without_patch(
     """A warning is logged when the patch component is missing."""
     pv = tmp_path / ".python-version"
     pv.write_text("3.12\n")
-    # _check_has_patch logs a warning via loguru; it should not raise.
+    # _check_has_patch logs a warning; it should not raise.
     _check_has_patch(pv)

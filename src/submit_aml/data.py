@@ -11,6 +11,7 @@ from azure.ai.ml.entities._job.sweep.search_space import SweepDistribution
 from azure.ai.ml.exceptions import MlException
 
 from .logger import logger
+from .progress import report_time
 
 TypeInputsDict = dict[str, Input | SweepDistribution]
 TypeOptionalStrList = list[str] | None
@@ -208,17 +209,19 @@ def _get_data_assets(
             else:
                 kwargs = {"version": version}
 
-            logger.info(f'Retrieving data asset "{path}"...')
-            try:
-                data = ml_client.data.get(name=path, **kwargs)
-            except MlException as e:
-                msg = (
-                    "Error getting data asset with"
-                    f' name "{path}"'
-                    f' and version "{version}"'
-                )
-                raise ValueError(msg) from e
-            logger.success(f'Found data asset with path "{path}"')
+            with report_time(
+                f'Retrieving data asset "{path}"...',
+                f'Retrieved data asset "{path}"',
+            ):
+                try:
+                    data = ml_client.data.get(name=path, **kwargs)
+                except MlException as e:
+                    msg = (
+                        "Error getting data asset with"
+                        f' name "{path}"'
+                        f' and version "{version}"'
+                    )
+                    raise ValueError(msg) from e
             inputs[alias] = Input(
                 path=data.id,
                 mode=mode,
