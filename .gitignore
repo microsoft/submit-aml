@@ -38,3 +38,6 @@ uv.lock
 
 # docs
 site/
+
+# mise-en-place
+mise.local.toml
