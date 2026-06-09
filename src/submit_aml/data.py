@@ -252,10 +252,10 @@ def _output_from_asset(string: str) -> tuple[str, Output]:
 #      semver, since dropping a CLI flag is a breaking change.
 #   3. At removal (2.0.0): delete the `datasets_download`/`datasets_mount`/
 #      `output` typer.Options in `__main__.py`, drop the matching
-#      `submit_to_aml` parameters and the `legacy_*` branches in
-#      `add_inputs`/`add_outputs`, delete the `_legacy_*` helpers and the
-#      `_warn_legacy_*` warning helpers, and note the breaking change in the
-#      changelog.
+#      `submit_to_aml` parameters and the `legacy_*` keyword arguments and
+#      branches in `build_command_inputs`/`build_command_outputs`, delete the
+#      `_legacy_*` helpers and the `_warn_legacy_*` warning helpers, and note
+#      the breaking change in the changelog.
 #
 # Until step 3, keep the legacy flags VISIBLE in --help (the [DEPRECATED]
 # marker is how users discover the migration path); only hide them as an
