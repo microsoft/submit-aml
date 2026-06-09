@@ -235,6 +235,28 @@ def _output_from_asset(string: str) -> tuple[str, Output]:
     return alias, output
 
 
+# Removal plan for the deprecated data flags (--mount/-m, --download/-d,
+# --output/-o), superseded by the explicit-source flags (--{mount,download}-
+# {asset,datastore,job} and --output-{datastore,asset}):
+#
+#   1. Now (1.x): both flag sets work. The legacy flags carry a [DEPRECATED]
+#      marker in --help and emit `_warn_deprecated` at runtime. This is the
+#      grace period in which users migrate.
+#   2. Before removal: once downstream callers have migrated (grep the known
+#      consumer repos / run scripts for `--mount`, `--download`, `--output`,
+#      `-m `, `-d `, `-o ` and the `datasets_{mount,download,output}` kwargs of
+#      `submit_to_aml`), and the deprecation has shipped in at least one
+#      tagged release, schedule removal for the next MAJOR version (2.0.0) per
+#      semver, since dropping a CLI flag is a breaking change.
+#   3. At removal (2.0.0): delete the `datasets_download`/`datasets_mount`/
+#      `output` typer.Options in `__main__.py`, drop the matching
+#      `submit_to_aml` parameters and the `legacy_*` branches in
+#      `add_inputs`/`add_outputs`, delete the `_legacy_*` helpers and
+#      `_warn_deprecated`, and note the breaking change in the changelog.
+#
+# Until step 3, keep the legacy flags VISIBLE in --help (the [DEPRECATED]
+# marker is how users discover the migration path); only hide them as an
+# optional last step in a release immediately preceding removal.
 def _warn_deprecated(old_flag: str, new_flags: str) -> None:
     """Emit a deprecation warning pointing users to the new flags.
 
