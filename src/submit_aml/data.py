@@ -437,40 +437,46 @@ def build_command_inputs(
 
     Returns:
         Dictionary of `alias: Input` mappings.
+
+    When the same alias appears under both a download and a mount flag, the
+    mount wins: downloads are applied first and mounts overwrite them. This
+    preserves the historical `{**downloads, **mounts}` precedence.
     """
     inputs: TypeInputsDict = {}
 
-    for string in mount_asset or []:
-        alias, value = _input_from_asset(ml_client, string, InputOutputModes.MOUNT)
-        inputs[alias] = value
+    # Downloads first, then mounts, so that mount takes precedence when the same
+    # alias is supplied under both modes (and likewise legacy after explicit).
     for string in download_asset or []:
         alias, value = _input_from_asset(ml_client, string, InputOutputModes.DOWNLOAD)
         inputs[alias] = value
-
-    for string in mount_datastore or []:
-        alias, value = _input_from_datastore(string, InputOutputModes.MOUNT)
+    for string in mount_asset or []:
+        alias, value = _input_from_asset(ml_client, string, InputOutputModes.MOUNT)
         inputs[alias] = value
+
     for string in download_datastore or []:
         alias, value = _input_from_datastore(string, InputOutputModes.DOWNLOAD)
         inputs[alias] = value
-
-    for string in mount_job or []:
-        alias, value = _input_from_job(string, InputOutputModes.MOUNT)
+    for string in mount_datastore or []:
+        alias, value = _input_from_datastore(string, InputOutputModes.MOUNT)
         inputs[alias] = value
+
     for string in download_job or []:
         alias, value = _input_from_job(string, InputOutputModes.DOWNLOAD)
         inputs[alias] = value
+    for string in mount_job or []:
+        alias, value = _input_from_job(string, InputOutputModes.MOUNT)
+        inputs[alias] = value
 
-    if legacy_mount:
-        for string in legacy_mount:
-            alias, value = _legacy_input(
-                ml_client, string, InputOutputModes.MOUNT, "mount"
-            )
-            inputs[alias] = value
     if legacy_download:
         for string in legacy_download:
             alias, value = _legacy_input(
                 ml_client, string, InputOutputModes.DOWNLOAD, "download"
+            )
+            inputs[alias] = value
+    if legacy_mount:
+        for string in legacy_mount:
+            alias, value = _legacy_input(
+                ml_client, string, InputOutputModes.MOUNT, "mount"
             )
             inputs[alias] = value
 

@@ -289,6 +289,28 @@ def test_build_command_inputs_legacy_asset_calls_client() -> None:
     client.data.get.assert_called_once()
 
 
+def test_build_command_inputs_mount_overrides_download_for_duplicate_alias() -> None:
+    """When an alias is given under both modes, mount wins (legacy precedence)."""
+    client = Mock()
+    inputs = build_command_inputs(
+        client,
+        download_datastore=["ref=mystore/exports/reference"],
+        mount_datastore=["ref=mystore/exports/reference"],
+    )
+    assert inputs["ref"].mode == InputOutputModes.MOUNT
+
+
+def test_build_command_inputs_legacy_mount_overrides_legacy_download() -> None:
+    """A colliding alias across legacy mount/download resolves to mount."""
+    client = Mock()
+    inputs = build_command_inputs(
+        client,
+        legacy_download=["ref=mystore/exports/reference"],
+        legacy_mount=["ref=mystore/exports/reference"],
+    )
+    assert inputs["ref"].mode == InputOutputModes.MOUNT
+
+
 def test_build_command_inputs_legacy_asset_warns_mount_asset(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
