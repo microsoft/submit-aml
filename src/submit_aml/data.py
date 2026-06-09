@@ -6,6 +6,7 @@ import sys
 from azure.ai.ml import Input
 from azure.ai.ml import MLClient
 from azure.ai.ml import Output
+from azure.ai.ml.constants import AssetTypes
 from azure.ai.ml.constants import InputOutputModes
 from azure.ai.ml.entities._job.sweep.search_space import SweepDistribution
 from azure.ai.ml.exceptions import MlException
@@ -15,6 +16,23 @@ from .progress import report_time
 
 TypeInputsDict = dict[str, Input | SweepDistribution]
 TypeOptionalStrList = list[str] | None
+
+
+def _datastore_uri(datastore: str, path: str) -> str:
+    """Build an Azure ML datastore URI for a folder.
+
+    Args:
+        datastore: Name of the datastore.
+        path: Path to the folder within the datastore.
+
+    Returns:
+        A URI of the form `azureml://datastores/<datastore>/paths/<path>`.
+
+    Examples:
+        >>> _datastore_uri('mystore', 'exports/reference')
+        'azureml://datastores/mystore/paths/exports/reference'
+    """
+    return f"azureml://datastores/{datastore}/paths/{path}"
 
 
 def _extract_alias_path_version(string: str) -> tuple[str, str, str | None]:
@@ -27,12 +45,9 @@ def _extract_alias_path_version(string: str) -> tuple[str, str, str | None]:
         Tuple of alias, path, and version (which may be
         None if version is not provided).
 
-    Raises:
-        ValueError: If the string is not of the expected format.
-
     Examples:
         >>> _extract_alias_path_version('my_data=MIMIC-CXR-V2:2')
-        ('my_data', 'MIMIC-CXR-V2', 2)
+        ('my_data', 'MIMIC-CXR-V2', '2')
         >>> _extract_alias_path_version('my_data=MIMIC-CXR-V2')
         ('my_data', 'MIMIC-CXR-V2', None)
     """
@@ -64,11 +79,8 @@ def _extract_alias_datastore_path(string: str) -> tuple[str, str, str]:
     Returns:
         Tuple of alias, datastore and folder.
 
-    Raises:
-        ValueError: If the string is not of the expected format.
-
     Examples:
-        >>> get_alias_datastore_path('my_data=inereyedata/output_dataset')
+        >>> _extract_alias_datastore_path('my_data=inereyedata/output_dataset')
         ('my_data', 'inereyedata', 'output_dataset')
     """
     pattern = r"(?P<alias>[^=]+)=(?P<datastore>[^/]+)/(?P<folder>.+)"
@@ -84,146 +96,297 @@ def _extract_alias_datastore_path(string: str) -> tuple[str, str, str]:
 
 
 def _extract_alias_job_path(string: str) -> tuple[str, str, str]:
-    """Get alias, job ID, and path from a job directory string.
+    """Get alias, job ID, and path from a job output string.
 
     Args:
-        string: String of the form `'alias=job_dir:<job_id>:<path>'`.
+        string: String of the form `'alias=<job_id>:<path>'`.
 
     Returns:
         Tuple of alias, job_id, and path.
 
-    Raises:
-        ValueError: If the string is not of the expected format.
-
     Examples:
-        >>> _extract_alias_job_path('checkpoint=job_dir:my_job_123:models/best.pth')
+        >>> _extract_alias_job_path('checkpoint=my_job_123:models/best.pth')
         ('checkpoint', 'my_job_123', 'models/best.pth')
     """
-    pattern = r"(?P<alias>[^=]+)=job_dir:(?P<job_id>[^:]+):(?P<path>.+)"
+    pattern = r"(?P<alias>[^=]+)=(?P<job_id>[^:]+):(?P<path>.+)"
     match = re.match(pattern, string)
     if match is None:
         message = (
-            f'Invalid job directory string: "{string}".'
-            ' Expected format: "alias=job_dir:job_id:path".'
+            f'Invalid job output string: "{string}".'
+            ' Expected format: "alias=job_id:path".'
         )
-        raise ValueError(message)
+        logger.error(message)
+        sys.exit(1)
     return match.group("alias"), match.group("job_id"), match.group("path")
 
 
-def _is_alias_path_version_string(string: str) -> bool:
-    try:
-        _extract_alias_path_version(string)
-        return True
-    except ValueError:
-        return False
+def _input_from_asset(
+    ml_client: MLClient,
+    string: str,
+    mode: str,
+) -> tuple[str, Input]:
+    """Build an `Input` from a registered data asset string.
+
+    Args:
+        ml_client: Client used to resolve the data asset.
+        string: String of the form `'alias=name[:version]'`.
+        mode: Either `InputOutputModes.DOWNLOAD` or `InputOutputModes.MOUNT`.
+
+    Returns:
+        Tuple of alias and the resolved `Input`.
+
+    Raises:
+        ValueError: If the data asset cannot be retrieved.
+    """
+    alias, path, version = _extract_alias_path_version(string)
+
+    if version is None:
+        kwargs = {"label": "latest"}
+    else:
+        kwargs = {"version": version}
+
+    with report_time(
+        f'Retrieving data asset "{path}"...',
+        f'Retrieved data asset "{path}"',
+    ):
+        try:
+            data = ml_client.data.get(name=path, **kwargs)
+        except MlException as e:
+            msg = f'Error getting data asset with name "{path}" and version "{version}"'
+            raise ValueError(msg) from e
+    return alias, Input(path=data.id, mode=mode)
 
 
-def _is_alias_job_path_string(string: str) -> bool:
-    try:
-        _extract_alias_job_path(string)
-        return True
-    except ValueError:
-        return False
+def _input_from_datastore(string: str, mode: str) -> tuple[str, Input]:
+    """Build an `Input` from a datastore-path string.
+
+    Args:
+        string: String of the form `'alias=datastore/folder'`.
+        mode: Either `InputOutputModes.DOWNLOAD` or `InputOutputModes.MOUNT`.
+
+    Returns:
+        Tuple of alias and the resulting `Input`.
+    """
+    alias, datastore, folder = _extract_alias_datastore_path(string)
+    azureml_path = _datastore_uri(datastore, folder)
+    logger.info(f'Using datastore path "{azureml_path}"...')
+    return alias, Input(path=azureml_path, mode=mode)
+
+
+def _input_from_job(string: str, mode: str) -> tuple[str, Input]:
+    """Build an `Input` from a previous job's output string.
+
+    Args:
+        string: String of the form `'alias=<job_id>:<path>'`.
+        mode: Either `InputOutputModes.DOWNLOAD` or `InputOutputModes.MOUNT`.
+
+    Returns:
+        Tuple of alias and the resulting `Input`.
+    """
+    alias, job_id, path = _extract_alias_job_path(string)
+    azureml_path = _datastore_uri(
+        "workspaceartifactstore",
+        f"ExperimentRun/dcid.{job_id}/{path}",
+    )
+    logger.info(f'Using job output path "{azureml_path}"...')
+    return alias, Input(path=azureml_path, mode=mode)
+
+
+def _output_from_datastore(string: str) -> tuple[str, Output]:
+    """Build an `Output` that writes to a datastore folder.
+
+    Args:
+        string: String of the form `'alias=datastore/folder'`.
+
+    Returns:
+        Tuple of alias and the resulting `Output`.
+    """
+    alias, datastore, folder = _extract_alias_datastore_path(string)
+    return alias, Output(path=_datastore_uri(datastore, folder))
+
+
+def _output_from_asset(string: str) -> tuple[str, Output]:
+    """Build an `Output` that registers a data asset.
+
+    The blobs are written to the workspace's default datastore at an
+    Azure ML-managed location and registered as a data asset.
+
+    Args:
+        string: String of the form `'alias=name[:version]'`. If the version is
+            omitted, Azure ML auto-increments it.
+
+    Returns:
+        Tuple of alias and the resulting `Output`.
+    """
+    alias, name, version = _extract_alias_path_version(string)
+    output = Output(type=AssetTypes.URI_FOLDER, name=name, version=version)
+    return alias, output
+
+
+def _warn_deprecated(old_flag: str, new_flags: str) -> None:
+    """Emit a deprecation warning pointing users to the new flags.
+
+    Args:
+        old_flag: The deprecated flag (e.g. `'--mount'`).
+        new_flags: Human-readable list of replacement flags.
+    """
+    logger.warning(
+        f"{old_flag} is deprecated and will be removed in a future release."
+        f" Use {new_flags} instead.",
+    )
+
+
+def _classify_legacy_input(string: str) -> str:
+    """Classify a legacy `--mount`/`--download` value by source type.
+
+    Args:
+        string: A legacy dataset string.
+
+    Returns:
+        One of `'job'`, `'datastore'`, or `'asset'`.
+
+    Examples:
+        >>> _classify_legacy_input('ckpt=job_dir:job123:out/best.pth')
+        'job'
+        >>> _classify_legacy_input('ref=mystore/exports/reference')
+        'datastore'
+        >>> _classify_legacy_input('data=MY-DATASET:2')
+        'asset'
+    """
+    if "=" not in string:
+        return "asset"
+    _, rhs = string.split("=", 1)
+    if rhs.startswith("job_dir:"):
+        return "job"
+    if "/" in rhs:
+        return "datastore"
+    return "asset"
+
+
+def _legacy_input(
+    ml_client: MLClient,
+    string: str,
+    mode: str,
+) -> tuple[str, Input]:
+    """Route a legacy `--mount`/`--download` value to the right builder.
+
+    Args:
+        ml_client: Client used to resolve data assets.
+        string: A legacy dataset string.
+        mode: Either `InputOutputModes.DOWNLOAD` or `InputOutputModes.MOUNT`.
+
+    Returns:
+        Tuple of alias and the resulting `Input`.
+    """
+    source = _classify_legacy_input(string)
+    if source == "job":
+        # Translate the old "alias=job_dir:<job_id>:<path>" form to the new one.
+        translated = string.replace("=job_dir:", "=", 1)
+        return _input_from_job(translated, mode)
+    if source == "datastore":
+        return _input_from_datastore(string, mode)
+    return _input_from_asset(ml_client, string, mode)
 
 
 def build_command_inputs(
     ml_client: MLClient,
-    strings_download: list[str] | None,
-    strings_mount: list[str] | None,
+    *,
+    mount_asset: list[str] | None = None,
+    download_asset: list[str] | None = None,
+    mount_datastore: list[str] | None = None,
+    download_datastore: list[str] | None = None,
+    mount_job: list[str] | None = None,
+    download_job: list[str] | None = None,
+    legacy_mount: list[str] | None = None,
+    legacy_download: list[str] | None = None,
 ) -> TypeInputsDict:
-    """Get dictionaries data assets to be mounted or downloaded.
+    """Build the inputs dictionary for a command job.
 
     Args:
-        strings_download: List of strings of the form `'alias=path:version'` to
-            be downloaded. If `None`, no data assets will be downloaded.
-        strings_mount: List of strings of the form `'alias=path:version'` to
-            be mounted. If `None`, no data assets will be mounted.
-    """
-    strings_download = [] if strings_download is None else strings_download
-    strings_mount = [] if strings_mount is None else strings_mount
-    datasets_download = _get_data_assets(
-        ml_client,
-        strings_download,
-        InputOutputModes.DOWNLOAD,
-    )
-    datasets_mount = _get_data_assets(
-        ml_client,
-        strings_mount,
-        InputOutputModes.MOUNT,
-    )
-    return {**datasets_download, **datasets_mount}
-
-
-def build_command_outputs(
-    strings_upload: list[str] | None,
-) -> dict[str, Output]:
-    """Get outputs for command.
-
-    Args:
-        strings_upload: List of strings of the form `'alias=datastore/path/to/dir'` to
-            be uploaded. If `None`, no outputs will be returned.
-    """
-    strings_upload = [] if strings_upload is None else strings_upload
-    outputs_dict = {}
-    for string in strings_upload:
-        alias, datastore, path = _extract_alias_datastore_path(string)
-        output = Output(
-            path=f"azureml://datastores/{datastore}/paths/{path}",
-        )
-        outputs_dict[alias] = output
-    return outputs_dict
-
-
-def _get_data_assets(
-    ml_client: MLClient,
-    datasets: list[str],
-    mode: str,
-) -> dict[str, Input]:
-    """Get data assets from Azure ML.
-
-    Args:
-        datasets: List of strings of the form `'alias=path:version'` or
-            `'alias=job_dir:<job_id>:<path>'`.
-        mode: Either `InputOutputModes.DOWNLOAD` or `InputOutputModes.MOUNT`.
+        ml_client: Client used to resolve data assets.
+        mount_asset: Data assets to mount, as `'alias=name[:version]'`.
+        download_asset: Data assets to download, as `'alias=name[:version]'`.
+        mount_datastore: Datastore folders to mount, as `'alias=datastore/folder'`.
+        download_datastore: Datastore folders to download, as
+            `'alias=datastore/folder'`.
+        mount_job: Previous job outputs to mount, as `'alias=<job_id>:<path>'`.
+        download_job: Previous job outputs to download, as `'alias=<job_id>:<path>'`.
+        legacy_mount: Deprecated `--mount` values, routed by source type.
+        legacy_download: Deprecated `--download` values, routed by source type.
 
     Returns:
         Dictionary of `alias: Input` mappings.
     """
-    inputs = {}
-    for string in datasets:
-        if _is_alias_job_path_string(string):
-            # Handle job directory format
-            alias, job_id, path = _extract_alias_job_path(string)
-            azureml_path = f"azureml://datastores/workspaceartifactstore/paths/ExperimentRun/dcid.{job_id}/{path}"
-            logger.info(f'Using job output path "{azureml_path}"...')
-            inputs[alias] = Input(
-                path=str(azureml_path),
-                mode=mode,
-            )
-        else:
-            # Handle regular data asset format
-            alias, path, version = _extract_alias_path_version(string)
+    inputs: TypeInputsDict = {}
 
-            if version is None:
-                kwargs = {"label": "latest"}
-            else:
-                kwargs = {"version": version}
+    for string in mount_asset or []:
+        alias, value = _input_from_asset(ml_client, string, InputOutputModes.MOUNT)
+        inputs[alias] = value
+    for string in download_asset or []:
+        alias, value = _input_from_asset(ml_client, string, InputOutputModes.DOWNLOAD)
+        inputs[alias] = value
 
-            with report_time(
-                f'Retrieving data asset "{path}"...',
-                f'Retrieved data asset "{path}"',
-            ):
-                try:
-                    data = ml_client.data.get(name=path, **kwargs)
-                except MlException as e:
-                    msg = (
-                        "Error getting data asset with"
-                        f' name "{path}"'
-                        f' and version "{version}"'
-                    )
-                    raise ValueError(msg) from e
-            inputs[alias] = Input(
-                path=data.id,
-                mode=mode,
-            )
+    for string in mount_datastore or []:
+        alias, value = _input_from_datastore(string, InputOutputModes.MOUNT)
+        inputs[alias] = value
+    for string in download_datastore or []:
+        alias, value = _input_from_datastore(string, InputOutputModes.DOWNLOAD)
+        inputs[alias] = value
+
+    for string in mount_job or []:
+        alias, value = _input_from_job(string, InputOutputModes.MOUNT)
+        inputs[alias] = value
+    for string in download_job or []:
+        alias, value = _input_from_job(string, InputOutputModes.DOWNLOAD)
+        inputs[alias] = value
+
+    if legacy_mount:
+        _warn_deprecated("--mount", "--mount-asset, --mount-datastore or --mount-job")
+        for string in legacy_mount:
+            alias, value = _legacy_input(ml_client, string, InputOutputModes.MOUNT)
+            inputs[alias] = value
+    if legacy_download:
+        _warn_deprecated(
+            "--download",
+            "--download-asset, --download-datastore or --download-job",
+        )
+        for string in legacy_download:
+            alias, value = _legacy_input(ml_client, string, InputOutputModes.DOWNLOAD)
+            inputs[alias] = value
+
     return inputs
+
+
+def build_command_outputs(
+    *,
+    output_datastore: list[str] | None = None,
+    output_asset: list[str] | None = None,
+    legacy_output: list[str] | None = None,
+) -> dict[str, Output]:
+    """Build the outputs dictionary for a command job.
+
+    Args:
+        output_datastore: Datastore folders to write to, as
+            `'alias=datastore/folder'`.
+        output_asset: Data assets to register, as `'alias=name[:version]'`.
+        legacy_output: Deprecated `--output` values (datastore folders).
+
+    Returns:
+        Dictionary of `alias: Output` mappings.
+    """
+    outputs: dict[str, Output] = {}
+
+    for string in output_datastore or []:
+        alias, value = _output_from_datastore(string)
+        outputs[alias] = value
+    for string in output_asset or []:
+        alias, value = _output_from_asset(string)
+        outputs[alias] = value
+
+    if legacy_output:
+        _warn_deprecated("--output", "--output-datastore or --output-asset")
+        for string in legacy_output:
+            alias, value = _output_from_datastore(string)
+            outputs[alias] = value
+
+    return outputs

@@ -141,12 +141,14 @@ def submit(
         "--download",
         "-d",
         help=(
-            "Azure ML dataset or job output folder to download. To download an Azure ML"
-            " dataset, the argument should take the form: alias, name and version"
-            " of the dataset; for example: 'vindr_dir=VINDR-CXR-V2:1'."
-            " If the version is omitted, the last one will be used."
-            " To download the output folder of a previous job, the argument should take"
-            " the form 'alias=job_dir:<job_id>:<path/in/job/outputs>'; for example:"
+            "[DEPRECATED] Use --download-asset, --download-datastore or"
+            " --download-job instead. Azure ML dataset or job output folder to"
+            " download. To download an Azure ML dataset, the argument should take"
+            " the form: alias, name and version of the dataset; for example:"
+            " 'vindr_dir=VINDR-CXR-V2:1'. If the version is omitted, the last one"
+            " will be used. To download the output folder of a previous job, the"
+            " argument should take the form"
+            " 'alias=job_dir:<job_id>:<path/in/job/outputs>'; for example:"
             " 'checkpoint=job_dir:crusty_hat_43s6lmvb25:outputs/checkpoint-10000'."
             " The alias can be used to pass input datasets to the script, e.g.,"
             r" '${{inputs.vindr_dir}}' or '${{inputs.checkpoint}}'."
@@ -159,11 +161,75 @@ def submit(
         "--mount",
         "-m",
         help=(
-            "Azure ML dataset or job output folder to mount."
+            "[DEPRECATED] Use --mount-asset, --mount-datastore or --mount-job"
+            " instead. Azure ML dataset or job output folder to mount."
             " For an Azure ML dataset, the alias, name and version should be provided"
             " while for a job output folder, the alias, job ID and path in the job"
             " outputs should be provided. See the --download option for more"
             " information."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    mount_asset: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--mount-asset",
+        help=(
+            "Registered Azure ML data asset to mount, expressed as"
+            ' "alias=name[:version]". For example: "vindr_dir=VINDR-CXR-V2:1".'
+            " If the version is omitted, the latest one is used."
+            r" Pass it to the script with '${{inputs.vindr_dir}}'."
+            " This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    download_asset: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--download-asset",
+        help=(
+            "Registered Azure ML data asset to download. Same format as"
+            " --mount-asset. This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    mount_datastore: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--mount-datastore",
+        help=(
+            "Datastore folder to mount, expressed as"
+            ' "alias=datastore/path/to/folder".'
+            ' For example: "ref=mystore/exports/reference".'
+            r" Pass it to the script with '${{inputs.ref}}'."
+            " This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    download_datastore: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--download-datastore",
+        help=(
+            "Datastore folder to download. Same format as --mount-datastore."
+            " This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    mount_job: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--mount-job",
+        help=(
+            "Output folder of a previous job to mount, expressed as"
+            ' "alias=<job_id>:<path/in/job/outputs>".'
+            ' For example: "checkpoint=crusty_hat_43s6lmvb25:outputs/best.pth".'
+            r" Pass it to the script with '${{inputs.checkpoint}}'."
+            " This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    download_job: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--download-job",
+        help=(
+            "Output folder of a previous job to download. Same format as"
+            " --mount-job. This option can be used multiple times."
         ),
         rich_help_panel=PANEL_DATA,
     ),
@@ -172,12 +238,39 @@ def submit(
         "--output",
         "-o",
         help=(
-            "Alias, datastore and path to folder into which outputs will be written,"
-            ' expressed as "alias=datastore/path/to/dir".'
+            "[DEPRECATED] Use --output-datastore or --output-asset instead."
+            " Alias, datastore and path to folder into which outputs will be"
+            ' written, expressed as "alias=datastore/path/to/dir".'
             ' For example: "out_dir=mydatastore/my_dataset".'
             " The alias can be used to pass outputs to the script, e.g.,"
             r' "${{outputs.out_dir}}".'
             " See the example for more information."
+            " This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    output_datastore: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--output-datastore",
+        help=(
+            "Datastore folder into which outputs will be written, expressed as"
+            ' "alias=datastore/path/to/dir".'
+            ' For example: "out_dir=mydatastore/my_dataset".'
+            r" Pass it to the script with '${{outputs.out_dir}}'."
+            " This option can be used multiple times."
+        ),
+        rich_help_panel=PANEL_DATA,
+    ),
+    output_asset: Optional[List[str]] = typer.Option(  # noqa: UP006, UP007
+        None,
+        "--output-asset",
+        help=(
+            "Register the outputs as an Azure ML data asset, expressed as"
+            ' "alias=name[:version]". For example: "out_dir=my-results".'
+            " The blobs are written to the workspace's default datastore and"
+            " registered as a data asset; if the version is omitted, Azure ML"
+            " auto-increments it."
+            r" Pass it to the script with '${{outputs.out_dir}}'."
             " This option can be used multiple times."
         ),
         rich_help_panel=PANEL_DATA,
@@ -408,6 +501,14 @@ def submit(
             datasets_download=datasets_download,
             datasets_mount=datasets_mount,
             datasets_output=output,
+            mount_asset=mount_asset,
+            download_asset=download_asset,
+            mount_datastore=mount_datastore,
+            download_datastore=download_datastore,
+            mount_job=mount_job,
+            download_job=download_job,
+            output_datastore=output_datastore,
+            output_asset=output_asset,
             debug=debug,
             dependency_groups=dependency_groups,
             description=description,
