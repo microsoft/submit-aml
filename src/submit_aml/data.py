@@ -364,14 +364,19 @@ def build_command_inputs(
         inputs[alias] = value
 
     if legacy_mount:
-        _warn_deprecated("--mount", "--mount-asset, --mount-datastore or --mount-job")
+        _warn_deprecated(
+            "--mount (datasets_mount)",
+            "--mount-asset, --mount-datastore or --mount-job"
+            " (mount_asset, mount_datastore or mount_job)",
+        )
         for string in legacy_mount:
             alias, value = _legacy_input(ml_client, string, InputOutputModes.MOUNT)
             inputs[alias] = value
     if legacy_download:
         _warn_deprecated(
-            "--download",
-            "--download-asset, --download-datastore or --download-job",
+            "--download (datasets_download)",
+            "--download-asset, --download-datastore or --download-job"
+            " (download_asset, download_datastore or download_job)",
         )
         for string in legacy_download:
             alias, value = _legacy_input(ml_client, string, InputOutputModes.DOWNLOAD)
@@ -407,7 +412,10 @@ def build_command_outputs(
         outputs[alias] = value
 
     if legacy_output:
-        _warn_deprecated("--output", "--output-datastore or --output-asset")
+        _warn_deprecated(
+            "--output (datasets_output)",
+            "--output-datastore or --output-asset (output_datastore or output_asset)",
+        )
         for string in legacy_output:
             alias, value = _output_from_datastore(string)
             outputs[alias] = value
