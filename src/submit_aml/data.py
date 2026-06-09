@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import sys
+import warnings
 
 from azure.ai.ml import Input
 from azure.ai.ml import MLClient
@@ -272,8 +273,13 @@ def _warn_legacy_input(
     source: str,
     old_value: str,
     new_value: str,
+    stacklevel: int = 2,
 ) -> None:
     """Warn that a legacy input flag is deprecated, naming the exact fix.
+
+    Emits both a human-facing log line (for CLI users) and a Python
+    `DeprecationWarning` (for callers of the library API, e.g. `submit_to_aml`
+    or `build_command_inputs`).
 
     Args:
         flag_base: The legacy flag base, either `'mount'` or `'download'`.
@@ -283,28 +289,40 @@ def _warn_legacy_input(
         new_value: The value to use with the replacement flag (identical to
             `old_value` except for job values, which drop the `job_dir:`
             prefix).
+        stacklevel: Stack level for the `DeprecationWarning`, so it points at
+            the API caller rather than this helper.
     """
     old_cli, old_param = _LEGACY_INPUT_FLAGS[flag_base]
     new_cli = f"--{flag_base}-{source}"
     new_param = f"{flag_base}_{source}"
-    logger.warning(
+    message = (
         f"{old_cli} ({old_param}) is deprecated and will be removed in a future"
         f" release. Replace '{old_cli} {old_value}' with"
-        f" '{new_cli} {new_value}' ({new_param}).",
+        f" '{new_cli} {new_value}' ({new_param})."
     )
+    logger.warning(message)
+    warnings.warn(message, DeprecationWarning, stacklevel=stacklevel)
 
 
-def _warn_legacy_output(old_value: str) -> None:
+def _warn_legacy_output(old_value: str, stacklevel: int = 2) -> None:
     """Warn that a legacy `--output` value is deprecated, naming the exact fix.
+
+    Emits both a human-facing log line (for CLI users) and a Python
+    `DeprecationWarning` (for callers of the library API, e.g. `submit_to_aml`
+    or `build_command_outputs`).
 
     Args:
         old_value: The legacy `alias=datastore/folder` string the user passed.
+        stacklevel: Stack level for the `DeprecationWarning`, so it points at
+            the API caller rather than this helper.
     """
-    logger.warning(
+    message = (
         "--output (datasets_output) is deprecated and will be removed in a"
         f" future release. Replace '--output {old_value}' with"
-        f" '--output-datastore {old_value}' (output_datastore).",
+        f" '--output-datastore {old_value}' (output_datastore)."
     )
+    logger.warning(message)
+    warnings.warn(message, DeprecationWarning, stacklevel=stacklevel)
 
 
 def _classify_legacy_input(string: str) -> str:
@@ -367,15 +385,17 @@ def _legacy_input(
         Tuple of alias and the resulting `Input`.
     """
     source = _classify_legacy_input(string)
+    # stacklevel=4: warnings.warn -> _warn_legacy_input -> _legacy_input ->
+    # build_command_inputs, so the DeprecationWarning points at the API caller.
     if source == "job":
         # Translate the old "alias=job_dir:<job_id>:<path>" form to the new one.
         translated = string.replace("=job_dir:", "=", 1)
-        _warn_legacy_input(flag_base, "job", string, translated)
+        _warn_legacy_input(flag_base, "job", string, translated, stacklevel=4)
         return _input_from_job(translated, mode)
     if source == "datastore":
-        _warn_legacy_input(flag_base, "datastore", string, string)
+        _warn_legacy_input(flag_base, "datastore", string, string, stacklevel=4)
         return _input_from_datastore(string, mode)
-    _warn_legacy_input(flag_base, "asset", string, string)
+    _warn_legacy_input(flag_base, "asset", string, string, stacklevel=4)
     return _input_from_asset(ml_client, string, mode)
 
 
@@ -475,7 +495,9 @@ def build_command_outputs(
 
     if legacy_output:
         for string in legacy_output:
-            _warn_legacy_output(string)
+            # stacklevel=3: warnings.warn -> _warn_legacy_output ->
+            # build_command_outputs, pointing at the API caller.
+            _warn_legacy_output(string, stacklevel=3)
             alias, value = _output_from_datastore(string)
             outputs[alias] = value
 

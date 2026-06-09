@@ -269,6 +269,13 @@ def test_build_command_inputs_legacy_job_new_syntax_routes() -> None:
     client.data.get.assert_not_called()
 
 
+def test_build_command_inputs_legacy_raises_deprecation_warning() -> None:
+    """The Python API raises a DeprecationWarning for legacy input values."""
+    client = Mock()
+    with pytest.warns(DeprecationWarning, match=r"--mount-datastore"):
+        build_command_inputs(client, legacy_mount=["ref=mystore/exports/reference"])
+
+
 def test_build_command_inputs_legacy_asset_calls_client() -> None:
     """Legacy --mount asset strings still resolve through the client."""
     client = Mock()
@@ -347,3 +354,9 @@ def test_build_command_outputs_legacy_warns(
     message = " ".join(capsys.readouterr().out.split())
     assert "deprecated" in message.lower()
     assert "--output-datastore out_dir=mydatastore/my_dataset" in message
+
+
+def test_build_command_outputs_legacy_raises_deprecation_warning() -> None:
+    """The Python API raises a DeprecationWarning for legacy output values."""
+    with pytest.warns(DeprecationWarning, match=r"--output-datastore"):
+        build_command_outputs(legacy_output=["out_dir=mydatastore/my_dataset"])
