@@ -218,9 +218,10 @@ def submit(
         None,
         "--mount-job",
         help=(
-            "Output folder of a previous job to mount, expressed as"
-            ' "alias=<job_id>:<path/in/job/outputs>".'
-            ' For example: "checkpoint=crusty_hat_43s6lmvb25:outputs/best.pth".'
+            "Output of a previous job to mount, expressed as"
+            ' "alias=<job_id>:<path/in/run/artifacts>". The path may point at any'
+            " run artifact, not just files under outputs/."
+            ' For example: "checkpoint=crusty_hat_43s6lmvb25:models/best.pth".'
             r" Pass it to the script with '${{inputs.checkpoint}}'."
             " This option can be used multiple times."
         ),
@@ -230,7 +231,7 @@ def submit(
         None,
         "--download-job",
         help=(
-            "Output folder of a previous job to download. Same format as"
+            "Output of a previous job to download. Same format as"
             " --mount-job. This option can be used multiple times."
         ),
         rich_help_panel=PANEL_DATA,

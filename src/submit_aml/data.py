@@ -117,6 +117,14 @@ def _extract_alias_job_path(string: str) -> tuple[str, str, str]:
         )
         logger.error(message)
         sys.exit(1)
+    if match.group("job_id") == "job_dir":
+        message = (
+            f'Invalid job output string: "{string}".'
+            ' The "job_dir:" prefix is no longer used with the job flags;'
+            ' use "alias=job_id:path" instead.'
+        )
+        logger.error(message)
+        sys.exit(1)
     return match.group("alias"), match.group("job_id"), match.group("path")
 
 

@@ -89,6 +89,12 @@ def test_extract_alias_job_path_invalid_exits() -> None:
         _extract_alias_job_path("bad_format")
 
 
+def test_extract_alias_job_path_rejects_legacy_prefix() -> None:
+    """The legacy 'job_dir:' prefix is rejected on the new job flags."""
+    with pytest.raises(SystemExit):
+        _extract_alias_job_path("ckpt=job_dir:my_job_123:models/best.pth")
+
+
 # ---------------------------------------------------------------------------
 # _classify_legacy_input
 # ---------------------------------------------------------------------------
