@@ -303,7 +303,7 @@ def _warn_legacy_input(
     )
     api_message = (
         f"The '{old_param}' parameter is deprecated and will be removed in a"
-        f" future release. Pass {new_value!r} to '{new_param}' instead."
+        f" future release. Pass [{new_value!r}] to '{new_param}' instead."
     )
     logger.warning(cli_message)
     warnings.warn(api_message, DeprecationWarning, stacklevel=stacklevel)
@@ -329,7 +329,7 @@ def _warn_legacy_output(old_value: str, stacklevel: int = 2) -> None:
     )
     api_message = (
         "The 'datasets_output' parameter is deprecated and will be removed in a"
-        f" future release. Pass {old_value!r} to 'output_datastore' instead."
+        f" future release. Pass [{old_value!r}] to 'output_datastore' instead."
     )
     logger.warning(cli_message)
     warnings.warn(api_message, DeprecationWarning, stacklevel=stacklevel)
