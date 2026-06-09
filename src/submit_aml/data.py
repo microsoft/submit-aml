@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import sys
 import warnings
+from typing import TypeVar
 
 from azure.ai.ml import Input
 from azure.ai.ml import MLClient
@@ -17,6 +18,7 @@ from .progress import report_time
 
 TypeInputsDict = dict[str, Input | SweepDistribution]
 TypeOptionalStrList = list[str] | None
+_MappingValue = TypeVar("_MappingValue")
 
 
 def _datastore_uri(datastore: str, path: str) -> str:
@@ -410,9 +412,9 @@ def _legacy_input(
 
 
 def _assign_unique(
-    mapping: dict[str, object],
+    mapping: dict[str, _MappingValue],
     alias: str,
-    value: object,
+    value: _MappingValue,
     *,
     kind: str,
 ) -> None:
