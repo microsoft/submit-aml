@@ -241,8 +241,9 @@ def _output_from_asset(string: str) -> tuple[str, Output]:
 # {asset,datastore,job} and --output-{datastore,asset}):
 #
 #   1. Now (1.x): both flag sets work. The legacy flags carry a [DEPRECATED]
-#      marker in --help and emit `_warn_deprecated` at runtime. This is the
-#      grace period in which users migrate.
+#      marker in --help and emit a deprecation warning at runtime (via
+#      `_warn_legacy_input` / `_warn_legacy_output`). This is the grace period
+#      in which users migrate.
 #   2. Before removal: once downstream callers have migrated (grep the known
 #      consumer repos / run scripts for `--mount`, `--download`, `--output`,
 #      `-m `, `-d `, `-o ` and the `datasets_{mount,download,output}` kwargs of
