@@ -55,6 +55,20 @@ def _extract_alias_path_version(string: str) -> tuple[str, str, str | None]:
     sys.exit(1)
 
 
+def _datastore_uri(datastore: str, path: str) -> str:
+    """Build an Azure ML datastore URI for a folder on a datastore.
+
+    Args:
+        datastore: Name of the registered datastore.
+        path: Folder path within the datastore.
+
+    Returns:
+        An `azureml://` URI of the form
+        `azureml://datastores/<datastore>/paths/<path>`.
+    """
+    return f"azureml://datastores/{datastore}/paths/{path}"
+
+
 def _extract_alias_datastore_path(string: str) -> tuple[str, str, str]:
     """Get alias, datastore name and folder path from a string.
 
@@ -126,6 +140,24 @@ def _is_alias_job_path_string(string: str) -> bool:
         return False
 
 
+def _is_alias_datastore_path_string(string: str) -> bool:
+    """Return True if the string refers to a raw datastore-path folder.
+
+    A datastore-path string has the form `'alias=datastore/folder'`. It is
+    distinguished from a data-asset name (`'alias=name[:version]'`) by the
+    presence of a `/` in the right-hand side, and from a job-output directory
+    by not starting with `job_dir:`.
+
+    This is intentionally a pure string check: `_extract_alias_datastore_path`
+    calls `sys.exit(1)` on a non-match rather than raising, so it cannot be
+    wrapped in try/except the way `_is_alias_job_path_string` is.
+    """
+    if "=" not in string:
+        return False
+    _, rhs = string.split("=", 1)
+    return "/" in rhs and not rhs.startswith("job_dir:")
+
+
 def build_command_inputs(
     ml_client: MLClient,
     strings_download: list[str] | None,
@@ -134,10 +166,13 @@ def build_command_inputs(
     """Get dictionaries data assets to be mounted or downloaded.
 
     Args:
-        strings_download: List of strings of the form `'alias=path:version'` to
-            be downloaded. If `None`, no data assets will be downloaded.
-        strings_mount: List of strings of the form `'alias=path:version'` to
-            be mounted. If `None`, no data assets will be mounted.
+        strings_download: List of strings to be downloaded. Each is of the form
+            `'alias=name[:version]'` (registered data asset),
+            `'alias=datastore/folder'` (raw datastore path), or
+            `'alias=job_dir:<job_id>:<path>'` (previous job output).
+            If `None`, no data assets will be downloaded.
+        strings_mount: List of strings to be mounted, in the same forms as
+            `strings_download`. If `None`, no data assets will be mounted.
     """
     strings_download = [] if strings_download is None else strings_download
     strings_mount = [] if strings_mount is None else strings_mount
@@ -168,7 +203,7 @@ def build_command_outputs(
     for string in strings_upload:
         alias, datastore, path = _extract_alias_datastore_path(string)
         output = Output(
-            path=f"azureml://datastores/{datastore}/paths/{path}",
+            path=_datastore_uri(datastore, path),
         )
         outputs_dict[alias] = output
     return outputs_dict
@@ -182,8 +217,8 @@ def _get_data_assets(
     """Get data assets from Azure ML.
 
     Args:
-        datasets: List of strings of the form `'alias=path:version'` or
-            `'alias=job_dir:<job_id>:<path>'`.
+        datasets: List of strings of the form `'alias=path:version'`,
+            `'alias=datastore/folder'`, or `'alias=job_dir:<job_id>:<path>'`.
         mode: Either `InputOutputModes.DOWNLOAD` or `InputOutputModes.MOUNT`.
 
     Returns:
@@ -198,6 +233,15 @@ def _get_data_assets(
             logger.info(f'Using job output path "{azureml_path}"...')
             inputs[alias] = Input(
                 path=str(azureml_path),
+                mode=mode,
+            )
+        elif _is_alias_datastore_path_string(string):
+            # Handle raw datastore-path folder format
+            alias, datastore, folder = _extract_alias_datastore_path(string)
+            azureml_path = _datastore_uri(datastore, folder)
+            logger.info(f'Using datastore path "{azureml_path}"...')
+            inputs[alias] = Input(
+                path=azureml_path,
                 mode=mode,
             )
         else:

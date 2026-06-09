@@ -196,6 +196,14 @@ objects.
         --mount "checkpoint=job_dir:my-training-job:models/best.pth"
     ```
 
+    Mount a raw folder on a registered datastore:
+
+    ```bash
+    submit-aml \
+        --script evaluate.py \
+        --mount "ref_dir=mydatastore/exports/reference"
+    ```
+
 === "Python"
 
     ```python
@@ -214,6 +222,12 @@ objects.
     submit_to_aml(
         script_path="evaluate.py",
         datasets_mount=["checkpoint=job_dir:my-training-job:models/best.pth"],
+    )
+
+    # Mount a raw folder on a registered datastore
+    submit_to_aml(
+        script_path="evaluate.py",
+        datasets_mount=["ref_dir=mydatastore/exports/reference"],
     )
     ```
 

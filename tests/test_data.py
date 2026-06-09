@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
+from azure.ai.ml.constants import InputOutputModes
 
 from submit_aml.data import _extract_alias_datastore_path
 from submit_aml.data import _extract_alias_job_path
 from submit_aml.data import _extract_alias_path_version
+from submit_aml.data import _is_alias_datastore_path_string
+from submit_aml.data import build_command_inputs
 from submit_aml.data import build_command_outputs
 
 # ---------------------------------------------------------------------------
@@ -83,3 +88,69 @@ def test_build_command_outputs_valid() -> None:
     output = outputs["out_dir"]
     assert "mydatastore" in output.path
     assert "my_dataset" in output.path
+
+
+# ---------------------------------------------------------------------------
+# _is_alias_datastore_path_string
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("string", "expected"),
+    [
+        ("ref=mystore/exports/reference", True),
+        ("ref=mystore/folder", True),
+        ("my_data=MIMIC-CXR-V2", False),
+        ("my_data=MIMIC-CXR-V2:2", False),
+        ("checkpoint=job_dir:my_job_123:models/best.pth", False),
+        ("no_equals_sign", False),
+    ],
+)
+def test_is_alias_datastore_path_string(string: str, expected: bool) -> None:
+    """Only 'alias=datastore/folder' strings are recognised as datastore paths."""
+    assert _is_alias_datastore_path_string(string) is expected
+
+
+# ---------------------------------------------------------------------------
+# build_command_inputs (datastore-path branch)
+# ---------------------------------------------------------------------------
+
+
+def test_build_command_inputs_datastore_path_mount() -> None:
+    """A raw datastore-path string builds an azureml:// Input without AML lookup."""
+    ml_client = MagicMock()
+    inputs = build_command_inputs(
+        ml_client,
+        strings_download=None,
+        strings_mount=["ref=mystore/exports/reference"],
+    )
+    assert "ref" in inputs
+    ref = inputs["ref"]
+    assert ref.path == "azureml://datastores/mystore/paths/exports/reference"
+    assert ref.mode == InputOutputModes.MOUNT
+    ml_client.data.get.assert_not_called()
+
+
+def test_build_command_inputs_datastore_path_download() -> None:
+    """The datastore-path branch honours the download mode."""
+    ml_client = MagicMock()
+    inputs = build_command_inputs(
+        ml_client,
+        strings_download=["ref=mystore/exports/reference"],
+        strings_mount=None,
+    )
+    assert inputs["ref"].mode == InputOutputModes.DOWNLOAD
+    ml_client.data.get.assert_not_called()
+
+
+def test_build_command_inputs_data_asset_routes_to_get() -> None:
+    """A 'name:version' string still resolves via ml_client.data.get."""
+    ml_client = MagicMock()
+    ml_client.data.get.return_value = MagicMock(id="azureml://data-asset-id")
+    inputs = build_command_inputs(
+        ml_client,
+        strings_download=None,
+        strings_mount=["my_data=MIMIC-CXR-V2:2"],
+    )
+    ml_client.data.get.assert_called_once_with(name="MIMIC-CXR-V2", version="2")
+    assert inputs["my_data"].path == "azureml://data-asset-id"
