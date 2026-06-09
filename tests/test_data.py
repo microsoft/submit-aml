@@ -270,10 +270,12 @@ def test_build_command_inputs_legacy_job_new_syntax_routes() -> None:
 
 
 def test_build_command_inputs_legacy_raises_deprecation_warning() -> None:
-    """The Python API raises a DeprecationWarning for legacy input values."""
+    """The Python API raises a DeprecationWarning naming the new parameter."""
     client = Mock()
-    with pytest.warns(DeprecationWarning, match=r"--mount-datastore"):
+    with pytest.warns(DeprecationWarning, match=r"mount_datastore") as record:
         build_command_inputs(client, legacy_mount=["ref=mystore/exports/reference"])
+    # The Python-facing warning references parameters, not CLI flags.
+    assert "--mount" not in str(record[0].message)
 
 
 def test_build_command_inputs_legacy_asset_calls_client() -> None:
@@ -295,6 +297,9 @@ def test_build_command_inputs_legacy_asset_warns_mount_asset(
     assert "--mount-asset my_alias=data_asset" in message
     assert "--mount-datastore" not in message
     assert "--mount-job" not in message
+    # CLI users should not see Python parameter names.
+    assert "mount_asset" not in message
+    assert "datasets_mount" not in message
 
 
 def test_build_command_inputs_legacy_datastore_warns_mount_datastore(
@@ -357,6 +362,7 @@ def test_build_command_outputs_legacy_warns(
 
 
 def test_build_command_outputs_legacy_raises_deprecation_warning() -> None:
-    """The Python API raises a DeprecationWarning for legacy output values."""
-    with pytest.warns(DeprecationWarning, match=r"--output-datastore"):
+    """The Python API raises a DeprecationWarning naming the new parameter."""
+    with pytest.warns(DeprecationWarning, match=r"output_datastore") as record:
         build_command_outputs(legacy_output=["out_dir=mydatastore/my_dataset"])
+    assert "--output" not in str(record[0].message)

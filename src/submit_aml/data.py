@@ -295,34 +295,43 @@ def _warn_legacy_input(
     old_cli, old_param = _LEGACY_INPUT_FLAGS[flag_base]
     new_cli = f"--{flag_base}-{source}"
     new_param = f"{flag_base}_{source}"
-    message = (
-        f"{old_cli} ({old_param}) is deprecated and will be removed in a future"
-        f" release. Replace '{old_cli} {old_value}' with"
-        f" '{new_cli} {new_value}' ({new_param})."
+    # CLI users see only flags; Python API users see only parameter names.
+    cli_message = (
+        f"{old_cli} is deprecated and will be removed in a future release."
+        f" Replace '{old_cli} {old_value}' with '{new_cli} {new_value}'."
     )
-    logger.warning(message)
-    warnings.warn(message, DeprecationWarning, stacklevel=stacklevel)
+    api_message = (
+        f"The '{old_param}' parameter is deprecated and will be removed in a"
+        f" future release. Pass {new_value!r} to '{new_param}' instead."
+    )
+    logger.warning(cli_message)
+    warnings.warn(api_message, DeprecationWarning, stacklevel=stacklevel)
 
 
 def _warn_legacy_output(old_value: str, stacklevel: int = 2) -> None:
     """Warn that a legacy `--output` value is deprecated, naming the exact fix.
 
-    Emits both a human-facing log line (for CLI users) and a Python
-    `DeprecationWarning` (for callers of the library API, e.g. `submit_to_aml`
-    or `build_command_outputs`).
+    Emits a human-facing log line naming the replacement CLI flag (for CLI
+    users) and a Python `DeprecationWarning` naming the replacement parameter
+    (for callers of the library API, e.g. `submit_to_aml` or
+    `build_command_outputs`).
 
     Args:
         old_value: The legacy `alias=datastore/folder` string the user passed.
         stacklevel: Stack level for the `DeprecationWarning`, so it points at
             the API caller rather than this helper.
     """
-    message = (
-        "--output (datasets_output) is deprecated and will be removed in a"
-        f" future release. Replace '--output {old_value}' with"
-        f" '--output-datastore {old_value}' (output_datastore)."
+    # CLI users see only flags; Python API users see only parameter names.
+    cli_message = (
+        "--output is deprecated and will be removed in a future release."
+        f" Replace '--output {old_value}' with '--output-datastore {old_value}'."
     )
-    logger.warning(message)
-    warnings.warn(message, DeprecationWarning, stacklevel=stacklevel)
+    api_message = (
+        "The 'datasets_output' parameter is deprecated and will be removed in a"
+        f" future release. Pass {old_value!r} to 'output_datastore' instead."
+    )
+    logger.warning(cli_message)
+    warnings.warn(api_message, DeprecationWarning, stacklevel=stacklevel)
 
 
 def _classify_legacy_input(string: str) -> str:
