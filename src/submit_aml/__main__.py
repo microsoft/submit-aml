@@ -142,12 +142,13 @@ def submit(
         "-d",
         help=(
             "[DEPRECATED] Use --download-asset, --download-datastore or"
-            " --download-job instead. Azure ML dataset or job output folder to"
-            " download. To download an Azure ML dataset, the argument should take"
-            " the form: alias, name and version of the dataset; for example:"
-            " 'vindr_dir=VINDR-CXR-V2:1'. If the version is omitted, the last one"
-            " will be used. To download the output folder of a previous job, the"
-            " argument should take the form"
+            " --download-job instead. Azure ML dataset, datastore folder or job"
+            " output folder to download. To download an Azure ML dataset, the"
+            " argument should take the form: alias, name and version of the"
+            " dataset; for example: 'vindr_dir=VINDR-CXR-V2:1'. If the version is"
+            " omitted, the last one will be used. To download a datastore folder,"
+            " use 'alias=datastore/folder'. To download the output folder of a"
+            " previous job, the argument should take the form"
             " 'alias=job_dir:<job_id>:<path/in/job/outputs>'; for example:"
             " 'checkpoint=job_dir:crusty_hat_43s6lmvb25:outputs/checkpoint-10000'."
             " The alias can be used to pass input datasets to the script, e.g.,"
@@ -162,9 +163,10 @@ def submit(
         "-m",
         help=(
             "[DEPRECATED] Use --mount-asset, --mount-datastore or --mount-job"
-            " instead. Azure ML dataset or job output folder to mount."
-            " For an Azure ML dataset, the alias, name and version should be provided"
-            " while for a job output folder, the alias, job ID and path in the job"
+            " instead. Azure ML dataset, datastore folder or job output folder to"
+            " mount. For an Azure ML dataset, the alias, name and version should be"
+            " provided; for a datastore folder, use 'alias=datastore/folder'; while"
+            " for a job output folder, the alias, job ID and path in the job"
             " outputs should be provided. See the --download option for more"
             " information."
         ),
