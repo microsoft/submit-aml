@@ -251,22 +251,59 @@ def _output_from_asset(string: str) -> tuple[str, Output]:
 #   3. At removal (2.0.0): delete the `datasets_download`/`datasets_mount`/
 #      `output` typer.Options in `__main__.py`, drop the matching
 #      `submit_to_aml` parameters and the `legacy_*` branches in
-#      `add_inputs`/`add_outputs`, delete the `_legacy_*` helpers and
-#      `_warn_deprecated`, and note the breaking change in the changelog.
+#      `add_inputs`/`add_outputs`, delete the `_legacy_*` helpers and the
+#      `_warn_legacy_*` warning helpers, and note the breaking change in the
+#      changelog.
 #
 # Until step 3, keep the legacy flags VISIBLE in --help (the [DEPRECATED]
 # marker is how users discover the migration path); only hide them as an
 # optional last step in a release immediately preceding removal.
-def _warn_deprecated(old_flag: str, new_flags: str) -> None:
-    """Emit a deprecation warning pointing users to the new flags.
+
+# Replacement input flag (CLI, Python parameter) for each legacy input flag
+# base and classified source type, used to tailor the deprecation warning.
+_LEGACY_INPUT_FLAGS = {
+    "mount": ("--mount", "datasets_mount"),
+    "download": ("--download", "datasets_download"),
+}
+
+
+def _warn_legacy_input(
+    flag_base: str,
+    source: str,
+    old_value: str,
+    new_value: str,
+) -> None:
+    """Warn that a legacy input flag is deprecated, naming the exact fix.
 
     Args:
-        old_flag: The deprecated flag (e.g. `'--mount'`).
-        new_flags: Human-readable list of replacement flags.
+        flag_base: The legacy flag base, either `'mount'` or `'download'`.
+        source: The classified source type (`'asset'`, `'datastore'`, or
+            `'job'`), used to pick the per-source replacement flag.
+        old_value: The legacy `alias=value` string the user passed.
+        new_value: The value to use with the replacement flag (identical to
+            `old_value` except for job values, which drop the `job_dir:`
+            prefix).
+    """
+    old_cli, old_param = _LEGACY_INPUT_FLAGS[flag_base]
+    new_cli = f"--{flag_base}-{source}"
+    new_param = f"{flag_base}_{source}"
+    logger.warning(
+        f"{old_cli} ({old_param}) is deprecated and will be removed in a future"
+        f" release. Replace '{old_cli} {old_value}' with"
+        f" '{new_cli} {new_value}' ({new_param}).",
+    )
+
+
+def _warn_legacy_output(old_value: str) -> None:
+    """Warn that a legacy `--output` value is deprecated, naming the exact fix.
+
+    Args:
+        old_value: The legacy `alias=datastore/folder` string the user passed.
     """
     logger.warning(
-        f"{old_flag} is deprecated and will be removed in a future release."
-        f" Use {new_flags} instead.",
+        "--output (datasets_output) is deprecated and will be removed in a"
+        f" future release. Replace '--output {old_value}' with"
+        f" '--output-datastore {old_value}' (output_datastore).",
     )
 
 
@@ -312,13 +349,19 @@ def _legacy_input(
     ml_client: MLClient,
     string: str,
     mode: str,
+    flag_base: str,
 ) -> tuple[str, Input]:
     """Route a legacy `--mount`/`--download` value to the right builder.
+
+    Emits a deprecation warning naming the exact replacement flag for the
+    value's classified source type.
 
     Args:
         ml_client: Client used to resolve data assets.
         string: A legacy dataset string.
         mode: Either `InputOutputModes.DOWNLOAD` or `InputOutputModes.MOUNT`.
+        flag_base: The legacy flag base, either `'mount'` or `'download'`,
+            used to tailor the deprecation warning.
 
     Returns:
         Tuple of alias and the resulting `Input`.
@@ -327,9 +370,12 @@ def _legacy_input(
     if source == "job":
         # Translate the old "alias=job_dir:<job_id>:<path>" form to the new one.
         translated = string.replace("=job_dir:", "=", 1)
+        _warn_legacy_input(flag_base, "job", string, translated)
         return _input_from_job(translated, mode)
     if source == "datastore":
+        _warn_legacy_input(flag_base, "datastore", string, string)
         return _input_from_datastore(string, mode)
+    _warn_legacy_input(flag_base, "asset", string, string)
     return _input_from_asset(ml_client, string, mode)
 
 
@@ -386,22 +432,16 @@ def build_command_inputs(
         inputs[alias] = value
 
     if legacy_mount:
-        _warn_deprecated(
-            "--mount (datasets_mount)",
-            "--mount-asset, --mount-datastore or --mount-job"
-            " (mount_asset, mount_datastore or mount_job)",
-        )
         for string in legacy_mount:
-            alias, value = _legacy_input(ml_client, string, InputOutputModes.MOUNT)
+            alias, value = _legacy_input(
+                ml_client, string, InputOutputModes.MOUNT, "mount"
+            )
             inputs[alias] = value
     if legacy_download:
-        _warn_deprecated(
-            "--download (datasets_download)",
-            "--download-asset, --download-datastore or --download-job"
-            " (download_asset, download_datastore or download_job)",
-        )
         for string in legacy_download:
-            alias, value = _legacy_input(ml_client, string, InputOutputModes.DOWNLOAD)
+            alias, value = _legacy_input(
+                ml_client, string, InputOutputModes.DOWNLOAD, "download"
+            )
             inputs[alias] = value
 
     return inputs
@@ -434,11 +474,8 @@ def build_command_outputs(
         outputs[alias] = value
 
     if legacy_output:
-        _warn_deprecated(
-            "--output (datasets_output)",
-            "--output-datastore or --output-asset (output_datastore or output_asset)",
-        )
         for string in legacy_output:
+            _warn_legacy_output(string)
             alias, value = _output_from_datastore(string)
             outputs[alias] = value
 

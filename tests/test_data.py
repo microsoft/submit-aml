@@ -277,6 +277,44 @@ def test_build_command_inputs_legacy_asset_calls_client() -> None:
     client.data.get.assert_called_once()
 
 
+def test_build_command_inputs_legacy_asset_warns_mount_asset(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A legacy --mount asset value is told to use --mount-asset specifically."""
+    client = Mock()
+    client.data.get.return_value = Mock(id="azureml:resolved-asset:1")
+    build_command_inputs(client, legacy_mount=["my_alias=data_asset"])
+    message = " ".join(capsys.readouterr().out.split())
+    assert "--mount-asset my_alias=data_asset" in message
+    assert "--mount-datastore" not in message
+    assert "--mount-job" not in message
+
+
+def test_build_command_inputs_legacy_datastore_warns_mount_datastore(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A legacy --mount datastore value is told to use --mount-datastore."""
+    client = Mock()
+    build_command_inputs(client, legacy_mount=["ref=mystore/exports/reference"])
+    message = " ".join(capsys.readouterr().out.split())
+    assert "--mount-datastore ref=mystore/exports/reference" in message
+
+
+def test_build_command_inputs_legacy_job_warns_download_job_translated(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A legacy --download job value is told to use --download-job, sans prefix."""
+    client = Mock()
+    build_command_inputs(
+        client,
+        legacy_download=["ckpt=job_dir:my_job_123:models/best.pth"],
+    )
+    message = " ".join(capsys.readouterr().out.split())
+    assert "--download-job ckpt=my_job_123:models/best.pth" in message
+    # The suggested replacement (after "with") drops the legacy job_dir: prefix.
+    assert "job_dir:" not in message.split("with", 1)[1]
+
+
 # ---------------------------------------------------------------------------
 # build_command_outputs
 # ---------------------------------------------------------------------------
@@ -303,7 +341,9 @@ def test_build_command_outputs_datastore_and_asset() -> None:
 def test_build_command_outputs_legacy_warns(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Legacy --output strings are built and emit a deprecation warning."""
+    """Legacy --output strings are built and emit a targeted deprecation warning."""
     outputs = build_command_outputs(legacy_output=["out_dir=mydatastore/my_dataset"])
     assert "out_dir" in outputs
-    assert "deprecated" in capsys.readouterr().out.lower()
+    message = " ".join(capsys.readouterr().out.split())
+    assert "deprecated" in message.lower()
+    assert "--output-datastore out_dir=mydatastore/my_dataset" in message
