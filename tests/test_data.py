@@ -289,26 +289,36 @@ def test_build_command_inputs_legacy_asset_calls_client() -> None:
     client.data.get.assert_called_once()
 
 
-def test_build_command_inputs_mount_overrides_download_for_duplicate_alias() -> None:
-    """When an alias is given under both modes, mount wins (legacy precedence)."""
+def test_build_command_inputs_duplicate_alias_across_modes_raises() -> None:
+    """The same alias under both download and mount is a hard error."""
     client = Mock()
-    inputs = build_command_inputs(
-        client,
-        download_datastore=["ref=mystore/exports/reference"],
-        mount_datastore=["ref=mystore/exports/reference"],
-    )
-    assert inputs["ref"].mode == InputOutputModes.MOUNT
+    with pytest.raises(ValueError, match=r"[Dd]uplicate.*alias.*ref"):
+        build_command_inputs(
+            client,
+            download_datastore=["ref=mystore/exports/reference"],
+            mount_datastore=["ref=mystore/exports/reference"],
+        )
 
 
-def test_build_command_inputs_legacy_mount_overrides_legacy_download() -> None:
-    """A colliding alias across legacy mount/download resolves to mount."""
+def test_build_command_inputs_duplicate_alias_same_mode_raises() -> None:
+    """A repeated alias within a single flag is also a hard error."""
     client = Mock()
-    inputs = build_command_inputs(
-        client,
-        legacy_download=["ref=mystore/exports/reference"],
-        legacy_mount=["ref=mystore/exports/reference"],
-    )
-    assert inputs["ref"].mode == InputOutputModes.MOUNT
+    with pytest.raises(ValueError, match=r"[Dd]uplicate.*alias.*ref"):
+        build_command_inputs(
+            client,
+            mount_datastore=["ref=mystore/a", "ref=mystore/b"],
+        )
+
+
+def test_build_command_inputs_legacy_duplicate_alias_raises() -> None:
+    """A colliding alias across legacy mount/download raises."""
+    client = Mock()
+    with pytest.raises(ValueError, match=r"[Dd]uplicate.*alias.*ref"):
+        build_command_inputs(
+            client,
+            legacy_download=["ref=mystore/exports/reference"],
+            legacy_mount=["ref=mystore/exports/reference"],
+        )
 
 
 def test_build_command_inputs_legacy_asset_warns_mount_asset(
@@ -373,6 +383,15 @@ def test_build_command_outputs_datastore_and_asset() -> None:
     )
     assert outputs["asset_dir"].name == "my-results"
     assert outputs["asset_dir"].version == "2"
+
+
+def test_build_command_outputs_duplicate_alias_raises() -> None:
+    """The same alias under two output flags is a hard error."""
+    with pytest.raises(ValueError, match=r"[Dd]uplicate.*alias.*out_dir"):
+        build_command_outputs(
+            output_datastore=["out_dir=mydatastore/my_dataset"],
+            output_asset=["out_dir=my-results:2"],
+        )
 
 
 def test_build_command_outputs_legacy_warns(

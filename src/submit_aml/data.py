@@ -409,6 +409,34 @@ def _legacy_input(
     return _input_from_asset(ml_client, string, mode)
 
 
+def _assign_unique(
+    mapping: dict[str, object],
+    alias: str,
+    value: object,
+    *,
+    kind: str,
+) -> None:
+    """Insert `alias -> value`, raising if the alias is already present.
+
+    Each alias becomes a single `${{inputs.<alias>}}` / `${{outputs.<alias>}}`
+    reference, so it must be unique. Reusing an alias (across modes, source
+    types, or flags) is a user error rather than something to silently resolve.
+
+    Args:
+        mapping: The inputs or outputs dict being built.
+        alias: The alias key to insert.
+        value: The `Input` or `Output` to store.
+        kind: Either `'input'` or `'output'`, used in the error message.
+
+    Raises:
+        ValueError: If `alias` is already present in `mapping`.
+    """
+    if alias in mapping:
+        msg = f"Duplicate {kind} alias {alias!r}: each alias must be unique."
+        raise ValueError(msg)
+    mapping[alias] = value
+
+
 def build_command_inputs(
     ml_client: MLClient,
     *,
@@ -438,47 +466,46 @@ def build_command_inputs(
     Returns:
         Dictionary of `alias: Input` mappings.
 
-    When the same alias appears under both a download and a mount flag, the
-    mount wins: downloads are applied first and mounts overwrite them. This
-    preserves the historical `{**downloads, **mounts}` precedence.
+    Raises:
+        ValueError: If the same alias is used more than once across any of the
+            input flags (an alias maps to a single `${{inputs.<alias>}}`
+            reference, so it must be unique).
     """
     inputs: TypeInputsDict = {}
 
-    # Downloads first, then mounts, so that mount takes precedence when the same
-    # alias is supplied under both modes (and likewise legacy after explicit).
     for string in download_asset or []:
         alias, value = _input_from_asset(ml_client, string, InputOutputModes.DOWNLOAD)
-        inputs[alias] = value
+        _assign_unique(inputs, alias, value, kind="input")
     for string in mount_asset or []:
         alias, value = _input_from_asset(ml_client, string, InputOutputModes.MOUNT)
-        inputs[alias] = value
+        _assign_unique(inputs, alias, value, kind="input")
 
     for string in download_datastore or []:
         alias, value = _input_from_datastore(string, InputOutputModes.DOWNLOAD)
-        inputs[alias] = value
+        _assign_unique(inputs, alias, value, kind="input")
     for string in mount_datastore or []:
         alias, value = _input_from_datastore(string, InputOutputModes.MOUNT)
-        inputs[alias] = value
+        _assign_unique(inputs, alias, value, kind="input")
 
     for string in download_job or []:
         alias, value = _input_from_job(string, InputOutputModes.DOWNLOAD)
-        inputs[alias] = value
+        _assign_unique(inputs, alias, value, kind="input")
     for string in mount_job or []:
         alias, value = _input_from_job(string, InputOutputModes.MOUNT)
-        inputs[alias] = value
+        _assign_unique(inputs, alias, value, kind="input")
 
     if legacy_download:
         for string in legacy_download:
             alias, value = _legacy_input(
                 ml_client, string, InputOutputModes.DOWNLOAD, "download"
             )
-            inputs[alias] = value
+            _assign_unique(inputs, alias, value, kind="input")
     if legacy_mount:
         for string in legacy_mount:
             alias, value = _legacy_input(
                 ml_client, string, InputOutputModes.MOUNT, "mount"
             )
-            inputs[alias] = value
+            _assign_unique(inputs, alias, value, kind="input")
 
     return inputs
 
@@ -499,15 +526,20 @@ def build_command_outputs(
 
     Returns:
         Dictionary of `alias: Output` mappings.
+
+    Raises:
+        ValueError: If the same alias is used more than once across any of the
+            output flags (an alias maps to a single `${{outputs.<alias>}}`
+            reference, so it must be unique).
     """
     outputs: dict[str, Output] = {}
 
     for string in output_datastore or []:
         alias, value = _output_from_datastore(string)
-        outputs[alias] = value
+        _assign_unique(outputs, alias, value, kind="output")
     for string in output_asset or []:
         alias, value = _output_from_asset(string)
-        outputs[alias] = value
+        _assign_unique(outputs, alias, value, kind="output")
 
     if legacy_output:
         for string in legacy_output:
@@ -515,6 +547,6 @@ def build_command_outputs(
             # build_command_outputs, pointing at the API caller.
             _warn_legacy_output(string, stacklevel=3)
             alias, value = _output_from_datastore(string)
-            outputs[alias] = value
+            _assign_unique(outputs, alias, value, kind="output")
 
     return outputs
