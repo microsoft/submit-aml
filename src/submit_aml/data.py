@@ -152,7 +152,11 @@ def _input_from_asset(
         try:
             data = ml_client.data.get(name=path, **kwargs)
         except MlException as e:
-            msg = f'Error getting data asset with name "{path}" and version "{version}"'
+            version_desc = "latest" if version is None else version
+            msg = (
+                f'Error getting data asset with name "{path}"'
+                f' and version "{version_desc}"'
+            )
             raise ValueError(msg) from e
     return alias, Input(path=data.id, mode=mode)
 
@@ -245,8 +249,15 @@ def _classify_legacy_input(string: str) -> str:
     Returns:
         One of `'job'`, `'datastore'`, or `'asset'`.
 
+    A right-hand side that starts with `job_dir:`, or that has a `:` before its
+    first `/` (the new `job_id:path` form), is a job output. A `/` that comes
+    before any `:` signals a datastore folder. Anything else (a bare `name` or
+    `name:version`) is a data asset.
+
     Examples:
         >>> _classify_legacy_input('ckpt=job_dir:job123:out/best.pth')
+        'job'
+        >>> _classify_legacy_input('ckpt=job123:out/best.pth')
         'job'
         >>> _classify_legacy_input('ref=mystore/exports/reference')
         'datastore'
@@ -258,9 +269,13 @@ def _classify_legacy_input(string: str) -> str:
     _, rhs = string.split("=", 1)
     if rhs.startswith("job_dir:"):
         return "job"
-    if "/" in rhs:
-        return "datastore"
-    return "asset"
+    slash = rhs.find("/")
+    if slash == -1:
+        return "asset"
+    colon = rhs.find(":")
+    if colon != -1 and colon < slash:
+        return "job"
+    return "datastore"
 
 
 def _legacy_input(

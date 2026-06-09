@@ -6,12 +6,14 @@ from unittest.mock import Mock
 
 import pytest
 from azure.ai.ml.constants import InputOutputModes
+from azure.ai.ml.exceptions import MlException
 
 from submit_aml.data import _classify_legacy_input
 from submit_aml.data import _datastore_uri
 from submit_aml.data import _extract_alias_datastore_path
 from submit_aml.data import _extract_alias_job_path
 from submit_aml.data import _extract_alias_path_version
+from submit_aml.data import _input_from_asset
 from submit_aml.data import _input_from_datastore
 from submit_aml.data import _input_from_job
 from submit_aml.data import _output_from_asset
@@ -97,9 +99,19 @@ def test_classify_legacy_input_job() -> None:
     assert _classify_legacy_input("ckpt=job_dir:job123:out/best.pth") == "job"
 
 
+def test_classify_legacy_input_job_new_syntax() -> None:
+    """A new-style 'job_id:path' value (colon before slash) is a job output."""
+    assert _classify_legacy_input("ckpt=job123:outputs/best.pth") == "job"
+
+
 def test_classify_legacy_input_datastore() -> None:
-    """A slash in the right-hand side signals a datastore path."""
+    """A slash before any colon signals a datastore path."""
     assert _classify_legacy_input("ref=mystore/exports/reference") == "datastore"
+
+
+def test_classify_legacy_input_datastore_with_colon_in_folder() -> None:
+    """A colon after the first slash is part of the folder, not a job id."""
+    assert _classify_legacy_input("ref=mystore/a:b/c") == "datastore"
 
 
 def test_classify_legacy_input_asset() -> None:
@@ -138,6 +150,16 @@ def test_input_from_job() -> None:
     assert "ExperimentRun/dcid.my_job_123/models/best.pth" in value.path
     assert "workspaceartifactstore" in value.path
     assert value.mode == InputOutputModes.DOWNLOAD
+
+
+def test_input_from_asset_missing_version_reports_latest() -> None:
+    """When no version is given, the failure message mentions 'latest'."""
+    client = Mock()
+    client.data.get.side_effect = MlException(
+        message="boom", no_personal_data_message="boom"
+    )
+    with pytest.raises(ValueError, match='version "latest"'):
+        _input_from_asset(client, "data=MY-DATASET", InputOutputModes.MOUNT)
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +247,17 @@ def test_build_command_inputs_legacy_job_routes() -> None:
     inputs = build_command_inputs(
         client,
         legacy_download=["ckpt=job_dir:my_job_123:models/best.pth"],
+    )
+    assert "ExperimentRun/dcid.my_job_123/models/best.pth" in inputs["ckpt"].path
+    client.data.get.assert_not_called()
+
+
+def test_build_command_inputs_legacy_job_new_syntax_routes() -> None:
+    """Legacy values using the new 'job_id:path' form route to the job builder."""
+    client = Mock()
+    inputs = build_command_inputs(
+        client,
+        legacy_mount=["ckpt=my_job_123:models/best.pth"],
     )
     assert "ExperimentRun/dcid.my_job_123/models/best.pth" in inputs["ckpt"].path
     client.data.get.assert_not_called()
