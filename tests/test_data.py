@@ -293,6 +293,26 @@ def test_build_command_inputs_legacy_raises_deprecation_warning() -> None:
     assert "['ref=mystore/exports/reference']" in message
 
 
+def test_build_command_inputs_legacy_positional_compat() -> None:
+    """Positional `(client, downloads, mounts)` calls still work (1.x compat)."""
+    client = Mock()
+    inputs = build_command_inputs(
+        client,
+        ["dl=mystore/down"],
+        ["mn=mystore/mount"],
+    )
+    assert inputs["dl"].mode == InputOutputModes.DOWNLOAD
+    assert inputs["mn"].mode == InputOutputModes.MOUNT
+
+
+def test_build_command_outputs_legacy_positional_compat() -> None:
+    """Positional `(uploads)` calls still work (1.x compat)."""
+    outputs = build_command_outputs(["out_dir=mydatastore/my_dataset"])
+    assert outputs["out_dir"].path == (
+        "azureml://datastores/mydatastore/paths/my_dataset"
+    )
+
+
 def test_build_command_inputs_legacy_asset_calls_client() -> None:
     """Legacy --mount asset strings still resolve through the client."""
     client = Mock()

@@ -254,8 +254,8 @@ def _output_from_asset(string: str) -> tuple[str, Output]:
 #      semver, since dropping a CLI flag is a breaking change.
 #   3. At removal (2.0.0): delete the `datasets_download`/`datasets_mount`/
 #      `output` typer.Options in `__main__.py`, drop the matching
-#      `submit_to_aml` parameters and the `legacy_*` keyword arguments and
-#      branches in `build_command_inputs`/`build_command_outputs`, delete the
+#      `submit_to_aml` parameters and the `legacy_*` parameters and branches in
+#      `build_command_inputs`/`build_command_outputs`, delete the
 #      `_legacy_*` helpers and the `_warn_legacy_*` warning helpers, and note
 #      the breaking change in the changelog.
 #
@@ -298,7 +298,9 @@ def _warn_legacy_input(
     old_cli, old_param = _LEGACY_INPUT_FLAGS[flag_base]
     new_cli = f"--{flag_base}-{source}"
     new_param = f"{flag_base}_{source}"
-    # CLI users see only flags; Python API users see only parameter names.
+    # Both are always emitted: the log line is phrased for CLI users (it names
+    # flags) and the DeprecationWarning for Python API users (it names
+    # parameters).
     cli_message = (
         f"{old_cli} is deprecated and will be removed in a future release."
         f" Replace '{old_cli} {old_value}' with '{new_cli} {new_value}'."
@@ -324,7 +326,9 @@ def _warn_legacy_output(old_value: str, stacklevel: int = 2) -> None:
         stacklevel: Stack level for the `DeprecationWarning`, so it points at
             the API caller rather than this helper.
     """
-    # CLI users see only flags; Python API users see only parameter names.
+    # Both are always emitted: the log line is phrased for CLI users (it names
+    # flags) and the DeprecationWarning for Python API users (it names
+    # parameters).
     cli_message = (
         "--output is deprecated and will be removed in a future release."
         f" Replace '--output {old_value}' with '--output-datastore {old_value}'."
@@ -441,6 +445,8 @@ def _assign_unique(
 
 def build_command_inputs(
     ml_client: MLClient,
+    legacy_download: list[str] | None = None,
+    legacy_mount: list[str] | None = None,
     *,
     mount_asset: list[str] | None = None,
     download_asset: list[str] | None = None,
@@ -448,13 +454,19 @@ def build_command_inputs(
     download_datastore: list[str] | None = None,
     mount_job: list[str] | None = None,
     download_job: list[str] | None = None,
-    legacy_mount: list[str] | None = None,
-    legacy_download: list[str] | None = None,
 ) -> TypeInputsDict:
     """Build the inputs dictionary for a command job.
 
+    `legacy_download` / `legacy_mount` are kept as the first positional
+    parameters (in that order) so existing positional callers from before the
+    explicit-source flags, i.e. `build_command_inputs(client, downloads,
+    mounts)`, keep working during the 1.x deprecation window. The new
+    explicit-source flags are keyword-only.
+
     Args:
         ml_client: Client used to resolve data assets.
+        legacy_download: Deprecated `--download` values, routed by source type.
+        legacy_mount: Deprecated `--mount` values, routed by source type.
         mount_asset: Data assets to mount, as `'alias=name[:version]'`.
         download_asset: Data assets to download, as `'alias=name[:version]'`.
         mount_datastore: Datastore folders to mount, as `'alias=datastore/folder'`.
@@ -462,8 +474,6 @@ def build_command_inputs(
             `'alias=datastore/folder'`.
         mount_job: Previous job outputs to mount, as `'alias=<job_id>:<path>'`.
         download_job: Previous job outputs to download, as `'alias=<job_id>:<path>'`.
-        legacy_mount: Deprecated `--mount` values, routed by source type.
-        legacy_download: Deprecated `--download` values, routed by source type.
 
     Returns:
         Dictionary of `alias: Input` mappings.
@@ -513,18 +523,23 @@ def build_command_inputs(
 
 
 def build_command_outputs(
+    legacy_output: list[str] | None = None,
     *,
     output_datastore: list[str] | None = None,
     output_asset: list[str] | None = None,
-    legacy_output: list[str] | None = None,
 ) -> dict[str, Output]:
     """Build the outputs dictionary for a command job.
 
+    `legacy_output` is kept as the first positional parameter so existing
+    positional callers from before the explicit-target flags, i.e.
+    `build_command_outputs(uploads)`, keep working during the 1.x deprecation
+    window. The new explicit-target flags are keyword-only.
+
     Args:
+        legacy_output: Deprecated `--output` values (datastore folders).
         output_datastore: Datastore folders to write to, as
             `'alias=datastore/folder'`.
         output_asset: Data assets to register, as `'alias=name[:version]'`.
-        legacy_output: Deprecated `--output` values (datastore folders).
 
     Returns:
         Dictionary of `alias: Output` mappings.
