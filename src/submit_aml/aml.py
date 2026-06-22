@@ -487,7 +487,7 @@ def submit_to_aml(
         return None
 
     # Build command that will be run
-    if command_prefix.startswith("uv run") and project_dir != source_dir:
+    if command_prefix.startswith("uv") and project_dir != source_dir:
         relative_project_dir = project_dir.relative_to(source_dir)
         command_prefix += f" --project {relative_project_dir}"
 
