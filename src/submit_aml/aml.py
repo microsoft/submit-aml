@@ -345,6 +345,14 @@ def submit_to_aml(
     datasets_download: TypeOptionalStrList = None,
     datasets_mount: TypeOptionalStrList = None,
     datasets_output: TypeOptionalStrList = None,
+    mount_asset: TypeOptionalStrList = None,
+    download_asset: TypeOptionalStrList = None,
+    mount_datastore: TypeOptionalStrList = None,
+    download_datastore: TypeOptionalStrList = None,
+    mount_job: TypeOptionalStrList = None,
+    download_job: TypeOptionalStrList = None,
+    output_datastore: TypeOptionalStrList = None,
+    output_asset: TypeOptionalStrList = None,
     debug: bool = False,
     dependency_groups: list[str] | None = None,
     description: str | None = None,
@@ -512,8 +520,22 @@ def submit_to_aml(
         add_service_for_tensorboard(services, tensorboard_dir)
 
     # Data
-    inputs = build_command_inputs(ml_client, datasets_download, datasets_mount)
-    outputs = build_command_outputs(datasets_output)
+    inputs = build_command_inputs(
+        ml_client,
+        mount_asset=mount_asset,
+        download_asset=download_asset,
+        mount_datastore=mount_datastore,
+        download_datastore=download_datastore,
+        mount_job=mount_job,
+        download_job=download_job,
+        legacy_mount=datasets_mount,
+        legacy_download=datasets_download,
+    )
+    outputs = build_command_outputs(
+        output_datastore=output_datastore,
+        output_asset=output_asset,
+        legacy_output=datasets_output,
+    )
 
     # Sweep jobs
     is_sweep = sweep_inputs is not None and len(sweep_inputs) > 0

@@ -168,32 +168,40 @@ Run a grid sweep over hyperparameters:
 
 Datasets are passed to the job as
 [`Input`](https://learn.microsoft.com/en-us/python/api/azure-ai-ml/azure.ai.ml.input?view=azure-python)
-objects.
+objects. There is one flag per source type (registered data asset, datastore
+folder, or previous job output), in either `--mount-*` or `--download-*` form.
 
 === "CLI"
 
-    Mount a dataset:
+    Mount or download a registered data asset:
 
     ```bash
     submit-aml \
         --script train.py \
-        --mount "data=MY-DATASET:2"
+        --mount-asset "data=MY-DATASET:2"
     ```
-
-    Download a dataset:
 
     ```bash
     submit-aml \
         --script train.py \
-        --download "data=MY-DATASET"
+        --download-asset "data=MY-DATASET"
     ```
 
-    Use outputs from a previous job:
+    Mount a folder directly from a datastore (no data-asset registration
+    required):
+
+    ```bash
+    submit-aml \
+        --script train.py \
+        --mount-datastore "ref=mystore/exports/reference"
+    ```
+
+    Use the outputs of a previous job:
 
     ```bash
     submit-aml \
         --script evaluate.py \
-        --mount "checkpoint=job_dir:my-training-job:models/best.pth"
+        --mount-job "checkpoint=my-training-job:models/best.pth"
     ```
 
 === "Python"
@@ -201,30 +209,49 @@ objects.
     ```python
     submit_to_aml(
         script_path="train.py",
-        datasets_mount=["data=MY-DATASET:2"],
+        mount_asset=["data=MY-DATASET:2"],
     )
 
     # Or download instead of mount
     submit_to_aml(
         script_path="train.py",
-        datasets_download=["data=MY-DATASET"],
+        download_asset=["data=MY-DATASET"],
+    )
+
+    # Mount a datastore folder directly
+    submit_to_aml(
+        script_path="train.py",
+        mount_datastore=["ref=mystore/exports/reference"],
     )
 
     # Use outputs from a previous job
     submit_to_aml(
         script_path="evaluate.py",
-        datasets_mount=["checkpoint=job_dir:my-training-job:models/best.pth"],
+        mount_job=["checkpoint=my-training-job:models/best.pth"],
     )
     ```
 
-Configure an output datastore:
+!!! note "Deprecated flags"
+
+    The `--mount`, `--download` and `--output` flags (and their
+    `datasets_mount`, `datasets_download` and `datasets_output` Python
+    equivalents) are deprecated in favour of the explicit per-source flags
+    above. They still work but emit a deprecation warning.
+
+Write outputs to a datastore folder, or register them as a data asset:
 
 === "CLI"
 
     ```bash
     submit-aml \
         --script train.py \
-        --output "results=mydatastore/experiment-outputs"
+        --output-datastore "results=mydatastore/experiment-outputs"
+    ```
+
+    ```bash
+    submit-aml \
+        --script train.py \
+        --output-asset "results=my-experiment-results"
     ```
 
 === "Python"
@@ -232,7 +259,13 @@ Configure an output datastore:
     ```python
     submit_to_aml(
         script_path="train.py",
-        datasets_output=["results=mydatastore/experiment-outputs"],
+        output_datastore=["results=mydatastore/experiment-outputs"],
+    )
+
+    # Or register the outputs as a data asset
+    submit_to_aml(
+        script_path="train.py",
+        output_asset=["results=my-experiment-results"],
     )
     ```
 
@@ -404,4 +437,3 @@ Submit and wait for the job to complete, streaming logs:
     ```python
     submit_to_aml(script_path="train.py", wait_for_completion=True)
     ```
-
