@@ -487,8 +487,14 @@ def submit_to_aml(
         return None
 
     # Build command that will be run
-    if command_prefix.startswith("uv") and project_dir != source_dir:
-        relative_project_dir = project_dir.relative_to(source_dir)
+    if command_prefix.startswith("uv run") and project_dir != source_dir:
+        try:
+            relative_project_dir = project_dir.relative_to(source_dir)
+        except ValueError as exc:
+            raise ValueError(
+                f"The project directory '{project_dir}' must be inside the source"
+                f" directory '{source_dir}' to append the uv --project flag."
+            ) from exc
         command_prefix += f" --project {relative_project_dir}"
 
     if services is None:
