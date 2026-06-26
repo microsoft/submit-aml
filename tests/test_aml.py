@@ -97,6 +97,8 @@ def test_docker_file_with_aml_environment_raises(tmp_path: Path) -> None:
     kwargs = _docker_file_kwargs(tmp_path, aml_environment="my-env")
     with pytest.raises(ValueError, match="aml-environment"):
         submit_to_aml(**kwargs)
+
+
 @pytest.mark.parametrize(
     ("command_prefix", "expected_in_command"),
     [
