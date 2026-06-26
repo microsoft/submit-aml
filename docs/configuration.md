@@ -101,6 +101,7 @@ provided. Explicit flags always take precedence.
 | Key | Default | Description |
 |---|---|---|
 | `docker_image` | `mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.8-cudnn8-ubuntu22.04` | Base Docker image (see [Azure ML containers](https://github.com/Azure/AzureML-Containers)) |
+| `docker_file` | — | Path to a custom Dockerfile used instead of the bundled template. Known placeholders (`{base_docker_image}`, `{uv_sync_command}`, `{docker_run}`) are substituted if present; otherwise the file is used verbatim |
 
 #### `[command]`
 
@@ -128,6 +129,7 @@ uppercase:
 | `compute_target` | `SUBMIT_AML_COMPUTE_TARGET` |
 | `num_nodes` | `SUBMIT_AML_NUM_NODES` |
 | `docker_image` | `SUBMIT_AML_DOCKER_IMAGE` |
+| `docker_file` | `SUBMIT_AML_DOCKER_FILE` |
 | `command_prefix` | `SUBMIT_AML_COMMAND_PREFIX` |
 | `executable` | `SUBMIT_AML_EXECUTABLE` |
 

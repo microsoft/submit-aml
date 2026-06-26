@@ -1,4 +1,5 @@
 import hashlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -138,6 +139,30 @@ def _check_env_files(project_dir: Path) -> tuple[Path, Path, Path]:
     return pyproject_path, uv_lock_path, pinned_python_path
 
 
+def _render_dockerfile(template: str, substitutions: dict[str, str]) -> str:
+    """Substitute `{name}` placeholders in a Dockerfile template.
+
+    Only known placeholders present in the template are replaced; unrelated
+    braces (for example shell `${VAR}` expansions or unknown `{tokens}`) are left
+    untouched, and replacement values are never re-scanned. A Dockerfile that
+    uses no known placeholder is therefore returned verbatim.
+
+    Args:
+        template: Raw Dockerfile text, possibly containing `{name}` placeholders.
+        substitutions: Mapping of placeholder name to replacement value.
+
+    Returns:
+        The Dockerfile text with known placeholders substituted.
+    """
+    if not substitutions:
+        return template
+    names = "|".join(re.escape(name) for name in substitutions)
+    # Match only the known `{name}` tokens, so unrelated braces (e.g. shell `${VAR}`)
+    # and any tokens inside substituted values are left intact.
+    pattern = r"\{(" + names + r")\}"
+    return re.sub(pattern, lambda match: substitutions[match.group(1)], template)
+
+
 def generate_build_context(
     project_dir: Path,
     base_docker_image: str = DEFAULT_DOCKER_IMAGE,
@@ -145,6 +170,7 @@ def generate_build_context(
     uv_sync_command: str = DEFAULT_UV_SYNC_COMMAND,
     dependency_groups: list[str] | None = None,
     optional_dependencies: list[str] | None = None,
+    docker_file: Path | None = None,
 ) -> BuildContext:
     """Instantiate an AML build context for the job.
 
@@ -167,6 +193,15 @@ def generate_build_context(
         uv_sync_command: Base uv sync command to create the virtual environment.
         dependency_groups: Optional list of dependency groups from `pyproject.toml` to
             include in the `uv sync` command.
+        optional_dependencies: Optional list of optional dependencies (extras) to
+            include in the `uv sync` command.
+        docker_file: Optional path to a custom Dockerfile to use instead of the bundled
+            template. If it contains the `{base_docker_image}`, `{uv_sync_command}` or
+            `{docker_run}` placeholders they are substituted; otherwise it is used
+            verbatim.
+
+    Returns:
+        The AML build context pointing at the prepared temporary directory.
     """
     pyproject_path, uv_lock_path, pinned_python_path = _check_env_files(project_dir)
     _check_has_patch(pinned_python_path)
@@ -187,15 +222,25 @@ def generate_build_context(
         for dependency in optional_dependencies:
             uv_sync_command += f" --extra {dependency}"
 
-    dockerfile_template_path = Path(__file__).parent / "Dockerfile"
+    if docker_file is not None:
+        dockerfile_template_path = Path(docker_file)
+        if not dockerfile_template_path.is_file():
+            msg = f"Custom Dockerfile not found: {dockerfile_template_path}"
+            raise FileNotFoundError(msg)
+        logger.info(f"Using custom Dockerfile: {dockerfile_template_path}")
+    else:
+        dockerfile_template_path = Path(__file__).parent / "Dockerfile"
     if docker_run is None:
         docker_run = ""
     else:
         docker_run = f"\nRUN {docker_run}\n"
-    dockerfile_string = dockerfile_template_path.read_text().format(
-        base_docker_image=base_docker_image,
-        uv_sync_command=uv_sync_command,
-        docker_run=docker_run,
+    dockerfile_string = _render_dockerfile(
+        dockerfile_template_path.read_text(),
+        {
+            "base_docker_image": base_docker_image,
+            "uv_sync_command": uv_sync_command,
+            "docker_run": docker_run,
+        },
     )
     logger.info("Sync command in Docker build:")
     logger.info(f'  "{uv_sync_command}"')
@@ -264,6 +309,7 @@ def infer_environment(
     aml_environment: str | None = None,
     conda_env_file: Path | None = None,
     docker_run: str | None = None,
+    docker_file: Path | None = None,
     *,
     build_docker_context: bool = True,
     dry_run: bool = False,
@@ -289,6 +335,10 @@ def infer_environment(
             from. If provided, this takes precedence over building a Docker context.
         docker_run: Additional command to run in the Dockerfile at the beginning of
             the build process. Useful for e.g. `apt-get` packages.
+        docker_file: Optional path to a custom Dockerfile to use instead of the bundled
+            template when building the Docker context. If it contains the
+            `{base_docker_image}`, `{uv_sync_command}` or `{docker_run}` placeholders
+            they are substituted; otherwise it is used verbatim.
         build_docker_context: Whether to build a Docker context for the environment.
         dry_run: If `True`, the function will not register the environment but will
             still return the name of the environment that would be registered. This has
@@ -350,6 +400,7 @@ def infer_environment(
             docker_run=docker_run,
             dependency_groups=dependency_groups,
             optional_dependencies=optional_dependencies,
+            docker_file=docker_file,
         )
         environment_instance = Environment(build=build_context)
         if dry_run:

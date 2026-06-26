@@ -357,6 +357,7 @@ def submit_to_aml(
     dependency_groups: list[str] | None = None,
     description: str | None = None,
     docker_run: str | None = None,
+    docker_file: Path | None = None,
     docker_shared_memory_gb: int = get_default("docker_shared_memory_gb"),
     dry_run: bool = False,
     enable_profiler: bool = False,
@@ -450,6 +451,23 @@ def submit_to_aml(
                 "Conda environments manage their own"
                 " dependencies."
             )
+    if docker_file is not None:
+        if not build_docker_context:
+            raise ValueError(
+                "Cannot use --docker-file together with --no-build-context. "
+                "A custom Dockerfile requires building a Docker context."
+            )
+        if conda_env_file is not None:
+            raise ValueError(
+                "Cannot use --docker-file together with --conda-env-file. "
+                "Choose either a custom Dockerfile or a conda environment file."
+            )
+        if aml_environment is not None:
+            raise ValueError(
+                "Cannot use --docker-file together with --aml-environment. "
+                "Choose either a custom Dockerfile or an existing AML environment."
+            )
+
     logger.info("Configuring job...")
     with indent():
         (
@@ -487,6 +505,7 @@ def submit_to_aml(
             build_docker_context=build_docker_context,
             conda_env_file=conda_env_file,
             docker_run=docker_run,
+            docker_file=docker_file,
             dry_run=dry_run,
         )
     if only_environment:
