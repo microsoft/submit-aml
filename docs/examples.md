@@ -327,6 +327,32 @@ You can use any image, including ones from the
     )
     ```
 
+### Custom Dockerfile
+
+Supply your own Dockerfile instead of the bundled template. If it contains the
+`{base_docker_image}`, `{uv_sync_command}` or `{docker_run}` placeholders they
+are substituted; otherwise the file is used verbatim. The build context still
+copies your `pyproject.toml`, `uv.lock` and `.python-version`, so a custom
+Dockerfile should remain compatible with that context. Cannot be combined with
+`--no-build-context`, `--conda-env-file`, or `--aml-environment`.
+
+=== "CLI"
+
+    ```bash
+    submit-aml --script train.py --docker-file path/to/Dockerfile
+    ```
+
+=== "Python"
+
+    ```python
+    from pathlib import Path
+
+    submit_to_aml(
+        script_path="train.py",
+        docker_file=Path("path/to/Dockerfile"),
+    )
+    ```
+
 ### Existing Azure ML environment
 
 === "CLI"

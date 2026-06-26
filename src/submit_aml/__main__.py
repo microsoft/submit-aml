@@ -113,6 +113,20 @@ def submit(
         help="Extra command to run in Docker build before syncing the environment.",
         rich_help_panel=PANEL_ENVIRONMENT,
     ),
+    docker_file: Optional[Path] = typer.Option(  # noqa: UP007
+        get_default("docker_file"),
+        "--docker-file",
+        help=(
+            "Path to a custom Dockerfile to use instead of the bundled template."
+            " If it contains the {base_docker_image}, {uv_sync_command} or"
+            " {docker_run} placeholders they are substituted; otherwise it is used"
+            " verbatim. Cannot be used together with --no-build-context,"
+            " --conda-env-file, or --aml-environment."
+        ),
+        rich_help_panel=PANEL_ENVIRONMENT,
+        exists=True,
+        dir_okay=False,
+    ),
     aml_environment: str | None = typer.Option(
         None,
         "--aml-environment",
@@ -518,6 +532,7 @@ def submit(
             dependency_groups=dependency_groups,
             description=description,
             docker_run=docker_run,
+            docker_file=docker_file,
             docker_shared_memory_gb=docker_shared_memory_gb,
             dry_run=dry_run,
             enable_profiler=profiler,

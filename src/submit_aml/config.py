@@ -66,6 +66,7 @@ _CONFIG_KEYS: dict[str, tuple[tuple[str | None, str], Any]] = {
         DEFAULT_DOCKER_SHARED_MEMORY_GB,
     ),
     "docker_image": (("environment", "docker_image"), DEFAULT_DOCKER_IMAGE),
+    "docker_file": (("environment", "docker_file"), None),
     "command_prefix": (("command", "command_prefix"), DEFAULT_COMMAND_PREFIX),
     "executable": (("command", "executable"), DEFAULT_EXECUTABLE),
     "tensorboard_dir": (
@@ -270,6 +271,10 @@ def generate_template_config() -> str:
 
         [environment]
         # docker_image = "mcr.microsoft.com/azureml/openmpi4.1.0-cuda11.8-cudnn8-ubuntu22.04"
+        # Path to a custom Dockerfile used instead of the bundled template.
+        # If it contains the {base_docker_image}, {uv_sync_command} or {docker_run}
+        # placeholders they are substituted; otherwise the file is used verbatim.
+        # docker_file = "path/to/Dockerfile"
 
         [command]
         # command_prefix = "uv run --no-default-groups"
