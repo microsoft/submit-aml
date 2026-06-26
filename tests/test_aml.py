@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -59,11 +61,11 @@ def test_get_client_msi_uses_managed_identity(
     mock_msi_cred.assert_called_once()  # type: ignore[union-attr]
 
 
-def _docker_file_kwargs(tmp_path: object, **overrides: object) -> dict[str, object]:
+def _docker_file_kwargs(tmp_path: Path, **overrides: Any) -> dict[str, Any]:
     """Build the minimal kwargs to reach the --docker-file validation block."""
-    docker_file = tmp_path / "Dockerfile"  # type: ignore[operator]
+    docker_file = tmp_path / "Dockerfile"
     docker_file.write_text("FROM my-image\n")
-    kwargs: dict[str, object] = {
+    kwargs: dict[str, Any] = {
         "subscription_id": "sub",
         "resource_group": "rg",
         "workspace_name": "ws",
@@ -74,24 +76,24 @@ def _docker_file_kwargs(tmp_path: object, **overrides: object) -> dict[str, obje
     return kwargs
 
 
-def test_docker_file_with_no_build_context_raises(tmp_path: object) -> None:
+def test_docker_file_with_no_build_context_raises(tmp_path: Path) -> None:
     """--docker-file with --no-build-context raises ValueError."""
     kwargs = _docker_file_kwargs(tmp_path, build_docker_context=False)
     with pytest.raises(ValueError, match="no-build-context"):
-        submit_to_aml(**kwargs)  # type: ignore[arg-type]
+        submit_to_aml(**kwargs)
 
 
-def test_docker_file_with_conda_env_file_raises(tmp_path: object) -> None:
+def test_docker_file_with_conda_env_file_raises(tmp_path: Path) -> None:
     """--docker-file with --conda-env-file raises a conda-specific ValueError."""
-    conda = tmp_path / "env.yaml"  # type: ignore[operator]
+    conda = tmp_path / "env.yaml"
     conda.write_text("name: test\n")
     kwargs = _docker_file_kwargs(tmp_path, conda_env_file=conda)
     with pytest.raises(ValueError, match="conda-env-file"):
-        submit_to_aml(**kwargs)  # type: ignore[arg-type]
+        submit_to_aml(**kwargs)
 
 
-def test_docker_file_with_aml_environment_raises(tmp_path: object) -> None:
+def test_docker_file_with_aml_environment_raises(tmp_path: Path) -> None:
     """--docker-file with --aml-environment raises ValueError."""
     kwargs = _docker_file_kwargs(tmp_path, aml_environment="my-env")
     with pytest.raises(ValueError, match="aml-environment"):
-        submit_to_aml(**kwargs)  # type: ignore[arg-type]
+        submit_to_aml(**kwargs)

@@ -1,4 +1,5 @@
 import hashlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -139,27 +140,27 @@ def _check_env_files(project_dir: Path) -> tuple[Path, Path, Path]:
 
 
 def _render_dockerfile(template: str, substitutions: dict[str, str]) -> str:
-    """Substitute the given placeholders in a Dockerfile template.
+    """Substitute `{name}` placeholders in a Dockerfile template.
 
-    Only placeholders that are actually present in *template* are substituted,
-    using a literal string replacement. This leaves any unrelated braces (for
-    example shell `${VAR}` expansions) untouched, so a custom Dockerfile that
-    does not use any placeholder is returned verbatim.
+    Only known placeholders present in the template are replaced; unrelated
+    braces (for example shell `${VAR}` expansions or unknown `{tokens}`) are left
+    untouched, and replacement values are never re-scanned. A Dockerfile that
+    uses no known placeholder is therefore returned verbatim.
 
     Args:
-        template: Raw Dockerfile text, possibly containing placeholders.
-        substitutions: Mapping of placeholder name to value. Each name `foo` is
-            matched against the literal token `{foo}` in the template.
+        template: Raw Dockerfile text, possibly containing `{name}` placeholders.
+        substitutions: Mapping of placeholder name to replacement value.
 
     Returns:
-        The Dockerfile text with any present placeholders substituted.
+        The Dockerfile text with known placeholders substituted.
     """
-    rendered = template
-    for name, value in substitutions.items():
-        placeholder = f"{{{name}}}"
-        if placeholder in rendered:
-            rendered = rendered.replace(placeholder, value)
-    return rendered
+    if not substitutions:
+        return template
+    names = "|".join(re.escape(name) for name in substitutions)
+    # Match only the known `{name}` tokens, so unrelated braces (e.g. shell `${VAR}`)
+    # and any tokens inside substituted values are left intact.
+    pattern = r"\{(" + names + r")\}"
+    return re.sub(pattern, lambda match: substitutions[match.group(1)], template)
 
 
 def generate_build_context(

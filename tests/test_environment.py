@@ -109,6 +109,33 @@ def test_render_dockerfile_leaves_unrelated_braces_untouched() -> None:
     assert rendered == "FROM my-image\nRUN echo ${HOME} && echo {custom}\n"
 
 
+def test_render_dockerfile_does_not_rescan_substituted_values() -> None:
+    """Placeholders are filled in a single pass; inserted values are not re-rendered.
+
+    Each placeholder is replaced exactly once, scanning only the original
+    template. Text introduced by a substitution is never searched for more
+    placeholders, so a `{base_docker_image}` token that appears inside the
+    docker_run value is left untouched even though `{base_docker_image}` is
+    itself a placeholder. This behavior is identical to `str.format()`.
+    """
+    template = "FROM {base_docker_image}\n{docker_run}RUN {uv_sync_command}\n"
+    rendered = _render_dockerfile(
+        template,
+        {
+            "base_docker_image": "ubuntu:22.04",
+            "uv_sync_command": "uv sync --frozen",
+            # The `{base_docker_image}` token must survive verbatim
+            # instead of being expanded to ubuntu.
+            "docker_run": "\nRUN echo 'FROM {base_docker_image}' > /Dockerfile.tmpl\n",
+        },
+    )
+    assert rendered == (
+        "FROM ubuntu:22.04\n"
+        "\nRUN echo 'FROM {base_docker_image}' > /Dockerfile.tmpl\n"
+        "RUN uv sync --frozen\n"
+    )
+
+
 # ---------------------------------------------------------------------------
 # generate_build_context (custom Dockerfile)
 # ---------------------------------------------------------------------------
