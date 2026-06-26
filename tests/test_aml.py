@@ -97,3 +97,88 @@ def test_docker_file_with_aml_environment_raises(tmp_path: Path) -> None:
     kwargs = _docker_file_kwargs(tmp_path, aml_environment="my-env")
     with pytest.raises(ValueError, match="aml-environment"):
         submit_to_aml(**kwargs)
+@pytest.mark.parametrize(
+    ("command_prefix", "expected_in_command"),
+    [
+        ("uv run", "--project subproject"),
+        ("python", None),
+    ],
+    ids=["uv-run-appends-project", "non-uv-skips-project"],
+)
+@patch("submit_aml.aml._submit")
+@patch("submit_aml.aml.instantiate_command")
+@patch("submit_aml.aml.infer_environment")
+@patch("submit_aml.aml.setup")
+def test_project_flag_only_appended_for_uv_run(
+    mock_setup: object,
+    mock_infer_env: object,
+    mock_instantiate: object,
+    mock_submit: object,
+    command_prefix: str,
+    expected_in_command: str | None,
+) -> None:
+    """``--project`` is appended only for ``uv run`` prefixes."""
+    source_dir = Path("/repo")
+    project_dir = source_dir / "subproject"
+    mock_setup.return_value = (  # type: ignore[attr-defined]
+        source_dir,
+        project_dir,
+        "run.py",
+        object(),  # ml_client
+        "description",
+        1,  # instance_count
+        None,  # distribution
+        "experiment",
+    )
+
+    submit_to_aml(
+        command_prefix=command_prefix,
+        compute_target="cpu-cluster",
+        script_path="run.py",
+        subscription_id="sub",
+        resource_group="rg",
+        workspace_name="ws",
+        dry_run=True,
+    )
+
+    command = mock_instantiate.call_args.kwargs["command"]  # type: ignore[attr-defined]
+    if expected_in_command is None:
+        assert "--project" not in command
+    else:
+        assert expected_in_command in command
+
+
+@patch("submit_aml.aml._submit")
+@patch("submit_aml.aml.instantiate_command")
+@patch("submit_aml.aml.infer_environment")
+@patch("submit_aml.aml.setup")
+def test_uv_run_prefix_raises_when_project_not_under_source(
+    mock_setup: object,
+    mock_infer_env: object,
+    mock_instantiate: object,
+    mock_submit: object,
+) -> None:
+    """A clear ValueError is raised when project_dir is not inside source_dir."""
+    source_dir = Path("/repo")
+    project_dir = Path("/other/project")
+    mock_setup.return_value = (  # type: ignore[attr-defined]
+        source_dir,
+        project_dir,
+        "run.py",
+        object(),  # ml_client
+        "description",
+        1,  # instance_count
+        None,  # distribution
+        "experiment",
+    )
+
+    with pytest.raises(ValueError, match="must be inside the source directory"):
+        submit_to_aml(
+            command_prefix="uv run",
+            compute_target="cpu-cluster",
+            script_path="run.py",
+            subscription_id="sub",
+            resource_group="rg",
+            workspace_name="ws",
+            dry_run=True,
+        )
