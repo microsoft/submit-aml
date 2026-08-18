@@ -56,7 +56,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -65,21 +64,16 @@ jobs:
       - name: Build docs
         run: uv run --group docs zensical build
 
-      - name: Deploy preview with Smokeshow
+      - name: Save PR metadata
         run: |
-          uvx smokeshow upload site/ 2>&1 | tee smokeshow-output.txt
-          url=$(grep -oP 'https://smokeshow\.helpmanual\.io/[^\s"]+' smokeshow-output.txt | head -1)
-          echo "SMOKESHOW_URL=$url" >> "$GITHUB_ENV"
-        env:
-          SMOKESHOW_GITHUB_STATUS_DESCRIPTION: Docs preview
-          SMOKESHOW_GITHUB_CONTEXT: docs-preview
-          SMOKESHOW_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SMOKESHOW_GITHUB_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          echo "${{ github.event.pull_request.number }}" > pr_number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > pr_head_sha.txt
 
-      - name: Comment on PR
-        uses: marocchino/sticky-pull-request-comment@v2
+      - name: Upload docs preview artifact
+        uses: actions/upload-artifact@v4
         with:
-          header: docs-preview
-          number: ${{ github.event.pull_request.number }}
-          message: |
-            📖 **Docs preview**: ${{ env.SMOKESHOW_URL }}
+          name: docs-preview
+          path: |
+            site/
+            pr_number.txt
+            pr_head_sha.txt
